@@ -4,41 +4,43 @@ data Expr
   = Ref Int
   | Lam Expr
   | App Expr Expr
-  deriving Show
+--  deriving Show
 
-shift :: Int -> Int -> Expr -> Expr
-shift z cut e = case e of
-                     Ref n -> if n >= cut
-                                 then Ref (n + z)
-                                 else e
-                     App f a -> App (shift z cut f) (shift z cut a)
-                     Lam f -> Lam (shift z (cut+1) f)
+instance Show Expr where
+  show e = case e of
+                Ref n   -> show n
+                Lam x   -> "λ" ++ show x
+                App f a -> "`" ++ show f ++ "," ++ show a
 
-has :: Int -> Expr -> Bool
-has cut e = case e of
-                 Ref n -> if n == cut
-                             then True
-                             else False
-                 App f a -> (has cut f) || (has cut a)
-                 Lam f -> (has (cut+1) f)
+rec :: (a -> a -> a) -> (Int -> Int -> a) -> (a -> a) -> Int -> Expr -> a
+rec app ref lam = inner 
+  where 
+   inner cut e = case e of
+                      Ref n -> n `ref` cut
+                      App f a -> (inner cut f) `app` (inner cut a)
+                      Lam f -> lam (inner (cut+1) f)
 
-replace :: Expr -> Int -> Expr -> Expr
-replace a cut e = case e of
-                       Ref n -> if n == cut
-                                   then shift cut 0 a
-                                   else e
-                       App f aa -> App (replace a cut f) (replace a cut aa)
-                       Lam f -> Lam $ replace a (cut+1) f
+isClosed :: Expr -> Bool
+isClosed = rec (&&) (<) id 0
+
+etable :: Expr -> Bool
+etable = rec (&&) (/=) id 0
+
+shift :: Int -> Expr -> Expr
+shift z = rec App (\n c -> if n >= c then Ref (n + z) else Ref n) Lam 0
+
+replace :: Expr -> Expr -> Expr
+replace a = rec App (\n c -> if n == c then shift c a else Ref n) Lam 0
 
 reduce :: Expr -> Expr
 reduce e = case e of
                 App f a -> case reduce f of
-                                Lam x -> shift (-1) 1 $ reduce $ replace (reduce a) 0 x
+                                Lam x -> reduce $ replace (reduce a) (reduce x) -- β-reduce
                                 f' -> App f' (reduce a)
-                Lam f -> case reduce f of
-                              App x (Ref 0) -> if has 0 x
-                                                  then e
-                                                  else reduce (shift (-1) 1 x) -- η-reduce
-                              f' -> Lam f'
+                Lam x -> case reduce x of
+                              App f (Ref 0) -> if etable f
+                                                  then reduce (shift (-1) f) -- η-reduce
+                                                  else e
+                              x' -> Lam x'
                 _ -> e
 
