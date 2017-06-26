@@ -1,5 +1,7 @@
 {-#OPTIONS_GHC -Wall #-}
 
+import Data.Hashable
+
 data Expr
   = Ref Int
   | Lam Expr
@@ -26,6 +28,11 @@ instance Eq Expr where
     where
       b' = reduce b
 
+instance Hashable Expr where
+  hashWithSalt s e = case reduce e of
+                          Ref n   -> s `hashWithSalt` (0 :: Int) `hashWithSalt` n
+                          Lam f   -> s `hashWithSalt` (1 :: Int) `hashWithSalt` f
+                          App f a -> s `hashWithSalt` (1 :: Int) `hashWithSalt` f `hashWithSalt` a
 
 rec :: (a -> a -> a) -> (Int -> Int -> a) -> (a -> a) -> Int -> Expr -> a
 rec app ref lam = inner 
