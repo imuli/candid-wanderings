@@ -12,6 +12,21 @@ instance Show Expr where
                 Lam x   -> "λ" ++ show x
                 App f a -> "`" ++ show f ++ "," ++ show a
 
+instance Eq Expr where
+  (==) a b = case reduce a of
+                  Ref n   -> case b' of
+                                  Ref m -> n == m
+                                  _     -> False
+                  Lam f   -> case b' of
+                                  Lam g -> f == g
+                                  _     -> False
+                  App f x -> case b' of
+                                  App g y -> f == g && x == y
+                                  _       -> False
+    where
+      b' = reduce b
+
+
 rec :: (a -> a -> a) -> (Int -> Int -> a) -> (a -> a) -> Int -> Expr -> a
 rec app ref lam = inner 
   where 
