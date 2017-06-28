@@ -2,9 +2,6 @@
 
 import Data.Hashable
 
-data TypeError
-  = UntypedBox
-
 data Constant
   = Star
   | Box
@@ -15,13 +12,6 @@ instance Hashable Constant where
                           Box  -> s `hashWithSalt` (0 :: Int)
                           Star -> s `hashWithSalt` (1 :: Int)
 
-axiom :: Constant -> Either TypeError Constant
-axiom Star = Right Box
-axiom Box = Left UntypedBox
-
-rule :: Constant -> Constant -> Constant
-rule _ c = c
-
 data Expr
   = Ref Int
   | Pi Expr Expr
@@ -29,6 +19,15 @@ data Expr
   | App Expr Expr
   | Const Constant
   deriving (Eq)
+
+data TypeError
+  = UntypedBox
+  | OpenExpression [Expr] Expr
+  | InvalidInputType Expr
+  | InvalidOutputType Expr
+  | NotAFunction Expr
+  | TypeMismatch Expr Expr
+  deriving (Eq, Show)
 
 index :: Int -> [a] -> Maybe a
 index _ [] = Nothing
@@ -51,6 +50,40 @@ instance Hashable Expr where
                           App f a -> s `hashWithSalt` (2 :: Int) `hashWithSalt` f `hashWithSalt` a
                           Pi  t f -> s `hashWithSalt` (3 :: Int) `hashWithSalt` t `hashWithSalt` f
                           Lam t f -> s `hashWithSalt` (4 :: Int) `hashWithSalt` t `hashWithSalt` f
+
+typeIn :: [Expr] -> Expr -> Either TypeError Expr
+typeIn ctx e = case e of
+                    Ref n   -> case index n ctx of
+                                    Nothing -> Left $ OpenExpression ctx (Ref n)
+                                    Just t -> Right t
+                    Const c -> case c of
+                                    Box -> Left UntypedBox
+                                    Star -> Right $ Const Box
+                    Lam t f -> loftE (typeIn ctx t) $
+                      \_ -> loftE (typeIn (ctx `with` t) f) $
+                        Right . Pi t
+                    App f a -> loftE (redux $ typeIn ctx f) $
+                      \x -> case x of
+                                 Pi s t -> loftE (typeIn ctx a) $
+                                   \r -> if r == s
+                                            then Right $ shift (-1) $ replace a t
+                                            else Left $ TypeMismatch s r
+                                 _      -> Left $ NotAFunction f
+                    Pi t f  -> loftE (typeIn ctx t) $
+                      \x -> case x of
+                                 Const _ -> loftE (typeIn (ctx `with` t) f) $
+                                   \x' -> case x' of
+                                               Const r -> Right $ Const r
+                                               _       -> Left $ InvalidOutputType x'
+                                 _       -> Left $ InvalidInputType t
+  where
+    loftE :: Either a b -> (b -> Either a b) -> Either a b
+    loftE (Left er) _ = Left er
+    loftE (Right x) f = f x
+    redux :: Either a Expr -> Either a Expr
+    redux x = loftE x $ Right . reduce
+    with :: [Expr] -> Expr -> [Expr]
+    with ctx' t = map (shift 1) $ t : ctx'
 
 rec :: (a -> a -> a) -> (Int -> Int -> a) -> (a -> a -> a) -> (a -> a -> a) -> (Constant -> a) -> Int -> Expr -> a
 rec app ref lam pi_ con = inner 
