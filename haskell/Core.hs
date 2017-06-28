@@ -1,5 +1,7 @@
 {-#OPTIONS_GHC -Wall #-}
 
+module Core where
+
 import Data.Hashable
 
 data Constant
@@ -69,9 +71,9 @@ typeIn ctx e = case e of
                                             then Right $ shift (-1) $ replace a t
                                             else Left $ TypeMismatch s r
                                  _      -> Left $ NotAFunction f
-                    Pi t f  -> loftE (typeIn ctx t) $
+                    Pi t f  -> loftE (redux $ typeIn ctx t) $
                       \x -> case x of
-                                 Const _ -> loftE (typeIn (ctx `with` t) f) $
+                                 Const _ -> loftE (redux $ typeIn (ctx `with` t) f) $
                                    \x' -> case x' of
                                                Const r -> Right $ Const r
                                                _       -> Left $ InvalidOutputType x'
