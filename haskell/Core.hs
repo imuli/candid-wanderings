@@ -2,9 +2,9 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 module Core
-  ( Constant
-  , Expr
-  , TypeError
+  ( Constant(..)
+  , Expr(..)
+  , TypeError(..)
   , typeOf
   , reduce
   ) where
