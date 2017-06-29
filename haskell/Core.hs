@@ -15,7 +15,7 @@ import Data.Hashable
 data Constant
   = Star
   | Box
-  deriving (Eq,Generic)
+  deriving (Eq, Generic)
 
 instance Hashable Constant
 instance Show Constant where
@@ -34,8 +34,8 @@ instance Hashable Expr
 instance Show Expr where
   show e = case e of
                 Ref n   -> show n
-                Lam t f -> "λ" ++ show t ++ " " ++ show f
-                Pi t f  -> "π" ++ show t ++ " " ++ show f
+                Lam t f -> "λ<" ++ show t ++ "> " ++ show f
+                Pi t f  -> "π<" ++ show t ++ ">" ++ show f
                 App f a -> "`" ++ show f ++ " " ++ show a
                 Const c -> show c
 
