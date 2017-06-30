@@ -80,7 +80,7 @@ typeIn ctx e = case e of
                       \x -> case x of
                                  Pi s t -> loftE (typeIn ctx a) $
                                    \r -> if r == s
-                                            then Right $ shift (-1) $ replace (shift 1 a) t
+                                            then Right $ replace a t
                                             else Left $ TypeMismatch s r
                                  _      -> Left $ NotAFunction f
                     -- Both input and output types of a function must indeed be types,
@@ -135,7 +135,7 @@ shift z = rec App (\n c -> if n >= c then Ref (n + z) else Ref n) Lam Pi Const 0
 
 -- replace instances of (Ref 0)
 replace :: Expr -> Expr -> Expr
-replace a = rec App (\n c -> if n == c then shift c a else Ref n) Lam Pi Const 0
+replace a = shift (-1) . rec App (\n c -> if n == c then shift (c+1) a else Ref n) Lam Pi Const 0
 
 -- beta and eta reduce an expression
 reduce :: Expr -> Expr
@@ -144,7 +144,7 @@ reduce e = case e of
                 Pi t x -> Pi (reduce t) (reduce x)
                 -- if we can reduce f to a lambda, we can carry out the application
                 App f a -> case reduce f of
-                                Lam _ x -> reduce $ shift (-1) $ replace (shift 1 $ reduce a) (reduce x) -- β-reduce
+                                Lam _ x -> reduce $ replace (reduce a) (reduce x) -- β-reduce
                                 f' -> App f' (reduce a)
                 -- if we can reduce x to a lambda and 
                 Lam t x -> case reduce x of
