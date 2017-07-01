@@ -44,7 +44,7 @@ data TypeError
   | OpenExpression [Expr] Expr
   | InvalidInputType Expr
   | InvalidOutputType Expr
-  | NotAFunction Expr
+  | NotAFunction Expr Expr
   | TypeMismatch Expr Expr
   deriving (Eq, Show)
 
@@ -82,7 +82,7 @@ typeIn ctx e = case e of
                                    \r -> if r == s
                                             then Right $ replace a t
                                             else Left $ TypeMismatch s r
-                                 _      -> Left $ NotAFunction f
+                                 r      -> Left $ NotAFunction f r
                     -- Both input and output types of a function must indeed be types,
                     -- resolving to Star (or Box, I guess).
                     -- TODO Not sure why we return the output type -
