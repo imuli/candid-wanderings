@@ -4,6 +4,7 @@
 module HashExpr
   ( HashExpr(..)
   , enhash
+  , unhash
   ) where
 
 import GHC.Generics
@@ -26,14 +27,14 @@ instance Show HashExpr where
   show he = case he of
                 Box     -> "□"
                 Star    -> "*"
-                Hash n  -> "#" ++ show n
                 Ref n   -> show n
+                Hash n  -> "#" ++ show n
                 App f a -> "`" ++ show f ++ " " ++ show a
                 Lam t f -> "λ<" ++ show t ++ "> " ++ show f
                 Pi t f  -> "π<" ++ show t ++ "> " ++ show f
 
-enhash :: E.Expr -> Map Int HashExpr -> (HashExpr, Map Int HashExpr)
-enhash e m = case E.typeOf e of
+enhash :: Map Int HashExpr -> E.Expr -> (HashExpr, Map Int HashExpr)
+enhash m e = case E.typeOf e of
                   Right _ -> case e of
                                   E.Const E.Box  -> (Box  , m)
                                   E.Const E.Star -> (Star , m)
@@ -50,8 +51,8 @@ enhash e m = case E.typeOf e of
                                   E.App f a  -> mkHE App f a
         where 
           mkHE :: (HashExpr -> HashExpr -> HashExpr) -> E.Expr -> E.Expr -> (HashExpr, Map Int HashExpr)
-          mkHE f a b = let (a', m') = enhash a m
-                           (b', m'') = enhash b m'
+          mkHE f a b = let (a', m') = enhash m a
+                           (b', m'') = enhash m' b
                         in
                            (f a' b', m'')
           mkHash :: (HashExpr -> HashExpr -> HashExpr) -> E.Expr -> E.Expr -> (HashExpr, Map Int HashExpr)
@@ -60,3 +61,12 @@ enhash e m = case E.typeOf e of
                           in
                              (Hash h, insert h he m')
 
+unhash :: Map Int HashExpr -> HashExpr -> Maybe E.Expr
+unhash m he = case he of
+                   Box     -> Just $ E.Const E.Box
+                   Star    -> Just $ E.Const E.Star
+                   Ref n   -> Just $ E.Ref n
+                   Hash h  -> Data.Map.lookup h m >>= unhash m
+                   App f a -> fmap E.App (unhash m f) <*> (unhash m a)
+                   Lam t f -> fmap E.Lam (unhash m t) <*> (unhash m f)
+                   Pi t f  -> fmap E.Pi (unhash m t) <*> (unhash m f)
