@@ -121,8 +121,6 @@ typeIn hm = ti
                                  r      -> Left $ NotAFunction f r
                     -- Both input and output types of a function must indeed be types,
                     -- resolving to Star (or Box, I guess).
-                    -- TODO Not sure why we return the output type -
-                    -- I guess the type of the input type might be Box...
                     Pi t f  -> loftE (redux $ ti ctx t) $
                       \x -> case x of
                                  Const _ -> loftE (redux $ ti (ctx `with` t) f) $
@@ -130,7 +128,7 @@ typeIn hm = ti
                                                Const r -> Right $ Const r
                                                _       -> Left $ InvalidOutputType x'
                                  _       -> Left $ InvalidInputType t
-                    -- 839657738154607712 is the hash of Const Star
+                    -- Look up the hash and extract it's type.
                     Hash h -> case Data.Map.lookup h hm of
                                    Nothing     -> Left $ HashNotFound h
                                    Just (_, t) -> Right $ unhash hm t
@@ -138,6 +136,7 @@ typeIn hm = ti
     loftE :: Either a b -> (b -> Either a b) -> Either a b
     loftE (Left er) _ = Left er
     loftE (Right x) f = f x
+    -- open up a potentially hashed expression
     unhax :: Either a Expr -> Either a Expr
     unhax x = loftE x $ Right . unhash hm
     -- reduce propogating erorrs
