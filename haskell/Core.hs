@@ -52,7 +52,7 @@ data Expr
   | Lam Expr Expr
   | App Expr Expr
   | Const Constant
-  | Hash Hash Hash
+  | Hash Hash
   deriving (Eq, Generic, Show)
 
 pretty' :: Int -> Int -> Expr -> String
@@ -63,7 +63,7 @@ pretty' i j e = replicate i ' ' ++
        Pi t f  -> "π" ++ pretty' 1 j' t ++ "\n" ++ pretty' j j' f
        App f a -> "$" ++ pretty' 1 j' f ++ "\n" ++ pretty' j j' a
        Const c -> showConstant c
-       Hash h t-> "#" ++ showHex h ++ showHex t
+       Hash h  -> "#" ++ showHex h
   where
     j' = j + 2
 
@@ -79,7 +79,7 @@ data TypeError
   | InvalidOutputType Expr
   | NotAFunction Expr Expr
   | TypeMismatch Expr Expr
-  | HashNotFound Int
+  | HashNotFound Hash
   deriving (Eq, Show)
 
 index :: Int -> [a] -> Maybe a
@@ -88,8 +88,10 @@ index 0 (x : _) = Just x
 index n (_ : xs) = index (n-1) xs
 
 -- type check an expression in a context
-typeIn :: [Expr] -> Expr -> Either TypeError Expr
-typeIn ctx e = case e of
+typeIn :: Map Hash (Expr, Expr) -> [Expr] -> Expr -> Either TypeError Expr
+typeIn hm = ti
+  where
+    ti ctx e = case e of
                     -- The type of a reference is the same as the input type to the
                     -- lamba it refers to. Unbound references are type errors.
                     Ref n   -> case index n ctx of
@@ -103,16 +105,16 @@ typeIn ctx e = case e of
                     -- A lambda (that checks) has an input and output type joined by Pi.
                     -- The input type is simply t.
                     -- The output type is the type of it's body.
-                    Lam t f -> loftE (typeIn ctx t) $
-                      \_ -> loftE (typeIn (ctx `with` t) f) $
+                    Lam t f -> loftE (ti ctx t) $
+                      \_ -> loftE (ti (ctx `with` t) f) $
                         Right . Pi t
                     -- Function application *must* take a lambda or a reference to one,
                     -- which have Pi types, and an argument that matches the input type.
                     -- It's resulting type is the output type of that lambda,
                     -- with any references to that lambda replaced.
-                    App f a -> loftE (redux $ typeIn ctx f) $
+                    App f a -> loftE (redux $ unhax $ ti ctx f) $
                       \x -> case x of
-                                 Pi s t -> loftE (typeIn ctx a) $
+                                 Pi s t -> loftE (ti ctx a) $
                                    \r -> if hashExpr r == hashExpr s
                                             then Right $ replace a t
                                             else Left $ TypeMismatch s r
@@ -121,23 +123,23 @@ typeIn ctx e = case e of
                     -- resolving to Star (or Box, I guess).
                     -- TODO Not sure why we return the output type -
                     -- I guess the type of the input type might be Box...
-                    Pi t f  -> loftE (redux $ typeIn ctx t) $
+                    Pi t f  -> loftE (redux $ ti ctx t) $
                       \x -> case x of
-                                 Const _ -> loftE (redux $ typeIn (ctx `with` t) f) $
+                                 Const _ -> loftE (redux $ ti (ctx `with` t) f) $
                                    \x' -> case x' of
                                                Const r -> Right $ Const r
                                                _       -> Left $ InvalidOutputType x'
                                  _       -> Left $ InvalidInputType t
                     -- 839657738154607712 is the hash of Const Star
-                    Hash _ (Value 0x0ba710439f9d0460) -> Right $ Const Star
-                    -- As we don't make Hashes of ill-typed expressions,
-                    -- the type of t will always be Star.
-                    Hash _ t -> Right $ Hash t (Value 0x0ba710439f9d0460)
-  where
+                    Hash h -> case Data.Map.lookup h hm of
+                                   Nothing     -> Left $ HashNotFound h
+                                   Just (_, t) -> Right $ unhash hm t
     -- automatically propogate errors
     loftE :: Either a b -> (b -> Either a b) -> Either a b
     loftE (Left er) _ = Left er
     loftE (Right x) f = f x
+    unhax :: Either a Expr -> Either a Expr
+    unhax x = loftE x $ Right . unhash hm
     -- reduce propogating erorrs
     redux :: Either a Expr -> Either a Expr
     redux x = loftE x $ Right . reduce
@@ -150,8 +152,8 @@ hashExpr = snd . enhash empty
 
 hash' :: Expr -> Hash
 hash' e = case e of
-               Hash h _ -> h
-               _        -> Value $ fromIntegral (hash e)
+               Hash h -> h
+               _      -> Value $ fromIntegral (hash e)
 
 enhash :: Map Hash (Expr, Expr) -> Expr -> (Map Hash (Expr, Expr), Expr)
 enhash mh0 e = case e of
@@ -161,29 +163,30 @@ enhash mh0 e = case e of
                     _       -> (mh0, e)
   where
     mkHash :: (Expr -> Expr -> Expr) -> Expr -> Expr -> (Map Hash (Expr, Expr), Expr)
-    mkHash kind a b = case typeOf e of
-                           Left _  -> (mh0, e)
-                           Right t -> let (mh1, a') = enhash mh0 a
-                                          (mh2, b') = enhash mh1 b
-                                          (mh3, t') = enhash mh2 t
-                                          e'        = kind a' b'
-                                          h         = hash' e'
-                                       in (insert h (e', t') mh3, Hash h (hash' $ t'))
+    mkHash kind a b =
+      let (mh1, a') = enhash mh0 a
+          (mh2, b') = enhash mh1 b
+          e'        = kind a' b'
+       in case typeOf mh2 e' of
+               Left _  -> (mh2, e')
+               Right t -> let (mh3, t') = enhash mh2 t
+                              h         = hash' e'
+                           in (insert h (e', t') mh3, Hash h)
 
 unhash :: Map Hash (Expr, Expr) -> Expr -> Expr
 unhash hm e = rec App (\n _ -> Ref n) Lam Pi Const hsh 0 e
   where
-    hsh :: Hash -> Hash -> Expr
-    hsh h t = case Data.Map.lookup h hm of
-                   Nothing -> Hash h t
+    hsh :: Hash -> Expr
+    hsh h = case Data.Map.lookup h hm of
+                   Nothing -> Hash h
                    Just (x, _) -> unhash hm x
 
 -- Type check a closed expression.
-typeOf :: Expr -> Either TypeError Expr
-typeOf = typeIn []
+typeOf :: Map Hash (Expr, Expr) -> Expr -> Either TypeError Expr
+typeOf hm = typeIn hm []
 
 -- general form used by the following helpers
-rec :: (a -> a -> a) -> (Int -> Int -> a) -> (a -> a -> a) -> (a -> a -> a) -> (Constant -> a) -> (Hash -> Hash -> a) -> Int -> Expr -> a
+rec :: (a -> a -> a) -> (Int -> Int -> a) -> (a -> a -> a) -> (a -> a -> a) -> (Constant -> a) -> (Hash -> a) -> Int -> Expr -> a
 rec app ref lam pi_ con hsh = inner
   where
    inner cut e = case e of
@@ -192,7 +195,7 @@ rec app ref lam pi_ con hsh = inner
                       Lam t f -> (inner cut t) `lam` (inner (cut+1) f)
                       Pi t f  -> (inner cut t) `pi_` (inner (cut+1) f)
                       Const c -> con c
-                      Hash h t-> hsh h t
+                      Hash h  -> hsh h
 
 --isClosed :: Expr -> Bool
 --isClosed = rec (&&) (<) (&&) (&&) (\_ -> True) 0
@@ -200,7 +203,7 @@ rec app ref lam pi_ con hsh = inner
 -- check for an instance of (Ref 0) in an expression
 -- if there isn't any we can η-reduce
 etable :: Expr -> Bool
-etable = rec (&&) (/=) (&&) (&&) (\_ -> True) (\_ _ -> True) 0
+etable = rec (&&) (/=) (&&) (&&) (\_ -> True) (\_ -> True) 0
 
 -- adjust instances of (Ref 0) and above by some amount
 shift :: Int -> Expr -> Expr
