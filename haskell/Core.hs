@@ -10,7 +10,10 @@ module Core
   , reduce
   , enhash
   , unhash
+  , hashExpr
   , pretty
+  , Hash (..)
+  , showHex
   ) where
 
 import qualified Numeric (showHex)
@@ -21,12 +24,13 @@ import Data.Map
 data Constant
   = Star
   | Box
-  deriving (Eq, Generic)
+  deriving (Eq, Generic, Show)
 
 instance Hashable Constant
-instance Show Constant where
-  show Star = "*"
-  show Box  = "□"
+
+showConstant :: Constant -> String
+showConstant Star = "*"
+showConstant Box  = "□"
 
 newtype Hash = Value Word
   deriving (Eq, Ord)
@@ -34,10 +38,13 @@ newtype Hash = Value Word
 pad :: Int -> a -> [a] -> [a]
 pad n x xs = replicate (n - length xs) x ++ xs
 
+showHex :: Hash -> String
+showHex (Value n) = pad 16 '0' $ Numeric.showHex n ""
+
 instance Hashable Hash where
   hashWithSalt salt (Value n) = hashWithSalt salt n
 instance Show Hash where
-  show (Value n) = "(Value 0x" ++ (pad 16 '0' $ Numeric.showHex n "") ++ ")"
+  showsPrec p h = showParen (p > 0) $ showString $ "Value 0x" ++ showHex h
 
 data Expr
   = Ref Int
@@ -55,8 +62,8 @@ pretty' i j e = replicate i ' ' ++
        Lam t f -> "λ" ++ pretty' 1 j' t ++ "\n" ++ pretty' j j' f
        Pi t f  -> "π" ++ pretty' 1 j' t ++ "\n" ++ pretty' j j' f
        App f a -> "$" ++ pretty' 1 j' f ++ "\n" ++ pretty' j j' a
-       Const c -> show c
-       Hash h t-> "#" ++ show h ++ show t
+       Const c -> showConstant c
+       Hash h t-> "#" ++ showHex h ++ showHex t
   where
     j' = j + 2
 
