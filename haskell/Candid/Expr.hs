@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Core
+module Candid.Expr
   ( Constant(..)
   , Expr(..)
   , TypeError(..)
