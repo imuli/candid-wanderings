@@ -3,8 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Candid.Expr
-  ( Constant(..)
-  , Expr(..)
+  ( Expr(..)
   , TypeError(..)
   , typeOf
   , reduce
@@ -21,17 +20,6 @@ import GHC.Generics
 import Data.Hashable
 import Data.Map
 import Data.Binary
-
-data Constant
-  = Star
-  | Box
-  deriving (Eq, Generic, Show)
-
-instance Hashable Constant
-
-showConstant :: Constant -> String
-showConstant Star = "*"
-showConstant Box  = "□"
 
 newtype Hash = Value Word
   deriving (Eq, Ord)
@@ -52,17 +40,18 @@ data Expr
   | Pi Expr Expr
   | Lam Expr Expr
   | App Expr Expr
-  | Const Constant
   | Hash Hash
+  | Star
+  | Box
   deriving (Eq, Generic, Show)
 
 instance Binary Expr where
-  put (Const Star)     = put (248 :: Word8)
+  put Star             = put (248 :: Word8)
   put (Pi t f)         = put (249 :: Word8) >> put t >> put f
   put (Lam t f)        = put (250 :: Word8) >> put t >> put f
   put (App f a)        = put (251 :: Word8) >> put f >> put a
   put (Hash (Value h)) = put (252 :: Word8) >> put h
-  put (Const Box)      = fail "Tried to serialize □."
+  put Box              = fail "Tried to serialize □."
   put (Ref n)          = if n < 248
                             then put ((fromIntegral n) :: Word8)
                             else if n < 65536 + 248
@@ -71,7 +60,7 @@ instance Binary Expr where
                                     else fail "Reference is way too big."
   get = do x <- get :: Get Word8
            case x of
-                248 -> return $ Const Star
+                248 -> return Star
                 249 -> Pi <$> get <*> get
                 250 -> Lam <$> get <*> get
                 251 -> App <$> get <*> get
@@ -91,7 +80,8 @@ pretty' i j e = replicate i ' ' ++
        Lam t f -> "λ" ++ pretty' 1 j' t ++ "\n" ++ pretty' j j' f
        Pi t f  -> "π" ++ pretty' 1 j' t ++ "\n" ++ pretty' j j' f
        App f a -> "$" ++ pretty' 1 j' f ++ "\n" ++ pretty' j j' a
-       Const c -> showConstant c
+       Star    -> "*"
+       Box     -> "□"
        Hash h  -> "#" ++ showHex h
   where
     j' = j + 2
@@ -127,10 +117,9 @@ typeIn hm = ti
                                     Nothing -> Left $ OpenExpression ctx (Ref n)
                                     Just t -> Right t
                     -- Box has no type.
+                    Box -> Left UntypedBox
                     -- Star has the type of Box.
-                    Const c -> case c of
-                                    Box -> Left UntypedBox
-                                    Star -> Right $ Const Box
+                    Star -> Right Box
                     -- A lambda (that checks) has an input and output type joined by Pi.
                     -- The input type is simply t.
                     -- The output type is the type of it's body.
@@ -152,11 +141,15 @@ typeIn hm = ti
                     -- resolving to Star (or Box, I guess).
                     Pi t f  -> loftE (redux $ ti ctx t) $
                       \x -> case x of
-                                 Const _ -> loftE (redux $ ti (ctx `with` t) f) $
-                                   \x' -> case x' of
-                                               Const r -> Right $ Const r
-                                               _       -> Left $ InvalidOutputType x'
-                                 _       -> Left $ InvalidInputType t
+                                 Star -> right
+                                 Box  -> right
+                                 _    -> Left $ InvalidInputType t
+                        where
+                          right = loftE (redux $ ti (ctx `with` t) f) $
+                            \x' -> case x' of
+                                        Star -> Right Star
+                                        Box  -> Right Box
+                                        _       -> Left $ InvalidOutputType x'
                     -- Look up the hash and extract it's type.
                     Hash h -> case Data.Map.lookup h hm of
                                    Nothing     -> Left $ HashNotFound h
@@ -202,7 +195,7 @@ enhash mh0 e = case e of
                            in (insert h (e', t') mh3, Hash h)
 
 unhash :: Map Hash (Expr, Expr) -> Expr -> Expr
-unhash hm e = rec App (\n _ -> Ref n) Lam Pi Const hsh 0 e
+unhash hm e = rec App (\n _ -> Ref n) Lam Pi Star Box hsh 0 e
   where
     hsh :: Hash -> Expr
     hsh h = case Data.Map.lookup h hm of
@@ -214,15 +207,16 @@ typeOf :: Map Hash (Expr, Expr) -> Expr -> Either TypeError Expr
 typeOf hm = typeIn hm []
 
 -- general form used by the following helpers
-rec :: (a -> a -> a) -> (Word -> Word -> a) -> (a -> a -> a) -> (a -> a -> a) -> (Constant -> a) -> (Hash -> a) -> Word -> Expr -> a
-rec app ref lam pi_ con hsh = inner
+rec :: (a -> a -> a) -> (Word -> Word -> a) -> (a -> a -> a) -> (a -> a -> a) -> a -> a -> (Hash -> a) -> Word -> Expr -> a
+rec app ref lam pi_ sta box hsh = inner
   where
    inner cut e = case e of
                       Ref n   -> n `ref` cut
                       App f a -> (inner cut f) `app` (inner cut a)
                       Lam t f -> (inner cut t) `lam` (inner (cut+1) f)
                       Pi t f  -> (inner cut t) `pi_` (inner (cut+1) f)
-                      Const c -> con c
+                      Star    -> sta
+                      Box     -> box
                       Hash h  -> hsh h
 
 --isClosed :: Expr -> Bool
@@ -231,15 +225,15 @@ rec app ref lam pi_ con hsh = inner
 -- check for an instance of (Ref 0) in an expression
 -- if there isn't any we can η-reduce
 etable :: Expr -> Bool
-etable = rec (&&) (/=) (&&) (&&) (\_ -> True) (\_ -> True) 0
+etable = rec (&&) (/=) (&&) (&&) True True (\_ -> True) 0
 
 -- adjust instances of (Ref 0) and above by some amount
 shift :: Word -> Expr -> Expr
-shift z = rec App (\n c -> if n >= c then Ref (n + z) else Ref n) Lam Pi Const Hash 0
+shift z = rec App (\n c -> if n >= c then Ref (n + z) else Ref n) Lam Pi Star Box Hash 0
 
 -- replace instances of (Ref 0)
 replace :: Expr -> Expr -> Expr
-replace a = shift (-1) . rec App (\n c -> if n == c then shift (c+1) a else Ref n) Lam Pi Const Hash 0
+replace a = shift (-1) . rec App (\n c -> if n == c then shift (c+1) a else Ref n) Lam Pi Star Box Hash 0
 
 -- beta and eta reduce an expression
 reduce :: Expr -> Expr
