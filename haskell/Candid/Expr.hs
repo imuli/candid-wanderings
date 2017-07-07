@@ -47,7 +47,7 @@ instance Show Hash where
   showsPrec p h = showParen (p > 0) $ showString $ "Value 0x" ++ showHex h
 
 data Expr
-  = Ref Int
+  = Ref Word
   | Pi Expr Expr
   | Lam Expr Expr
   | App Expr Expr
@@ -78,13 +78,13 @@ data TypeError
   | InvalidInputType Expr
   | InvalidOutputType Expr
   | NotAFunction Expr Expr
-  | TypeMismatch Expr Expr
+  | TypeMismatch Expr Expr Expr
   | HashNotFound Hash
   deriving (Eq, Show)
 
-index :: Int -> [a] -> Maybe a
-index _ [] = Nothing
-index 0 (x : _) = Just x
+index :: Word -> [a] -> Maybe a
+index _ []       = Nothing
+index 0 (x : _)  = Just x
 index n (_ : xs) = index (n-1) xs
 
 -- type check an expression in a context
@@ -117,7 +117,7 @@ typeIn hm = ti
                                  Pi s t -> loftE (ti ctx a) $
                                    \r -> if hashExpr r == hashExpr s
                                             then Right $ replace a t
-                                            else Left $ TypeMismatch s r
+                                            else Left $ TypeMismatch e s r
                                  r      -> Left $ NotAFunction f r
                     -- Both input and output types of a function must indeed be types,
                     -- resolving to Star (or Box, I guess).
@@ -185,7 +185,7 @@ typeOf :: Map Hash (Expr, Expr) -> Expr -> Either TypeError Expr
 typeOf hm = typeIn hm []
 
 -- general form used by the following helpers
-rec :: (a -> a -> a) -> (Int -> Int -> a) -> (a -> a -> a) -> (a -> a -> a) -> (Constant -> a) -> (Hash -> a) -> Int -> Expr -> a
+rec :: (a -> a -> a) -> (Word -> Word -> a) -> (a -> a -> a) -> (a -> a -> a) -> (Constant -> a) -> (Hash -> a) -> Word -> Expr -> a
 rec app ref lam pi_ con hsh = inner
   where
    inner cut e = case e of
@@ -205,7 +205,7 @@ etable :: Expr -> Bool
 etable = rec (&&) (/=) (&&) (&&) (\_ -> True) (\_ -> True) 0
 
 -- adjust instances of (Ref 0) and above by some amount
-shift :: Int -> Expr -> Expr
+shift :: Word -> Expr -> Expr
 shift z = rec App (\n c -> if n >= c then Ref (n + z) else Ref n) Lam Pi Const Hash 0
 
 -- replace instances of (Ref 0)
