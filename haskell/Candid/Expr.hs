@@ -20,6 +20,7 @@ import qualified Numeric (showHex)
 import GHC.Generics
 import Data.Hashable
 import Data.Map
+import Data.Binary
 
 data Constant
   = Star
@@ -54,6 +55,34 @@ data Expr
   | Const Constant
   | Hash Hash
   deriving (Eq, Generic, Show)
+
+instance Binary Expr where
+  put (Const Star)     = put (248 :: Word8)
+  put (Pi t f)         = put (249 :: Word8) >> put t >> put f
+  put (Lam t f)        = put (250 :: Word8) >> put t >> put f
+  put (App f a)        = put (251 :: Word8) >> put f >> put a
+  put (Hash (Value h)) = put (252 :: Word8) >> put h
+  put (Const Box)      = fail "Tried to serialize □."
+  put (Ref n)          = if n < 248
+                            then put ((fromIntegral n) :: Word8)
+                            else if n < 65536 + 248
+                                    then put (255 :: Word8) >>
+                                      put (fromIntegral (n - 248) :: Word16)
+                                    else fail "Reference is way too big."
+  get = do x <- get :: Get Word8
+           case x of
+                248 -> return $ Const Star
+                249 -> Pi <$> get <*> get
+                250 -> Lam <$> get <*> get
+                251 -> App <$> get <*> get
+                252 -> Hash . Value <$> get
+                253 -> reserved x
+                254 -> reserved x
+                255 -> Ref . ((+ 248) . fromIntegral :: Word16 -> Word) <$> get
+                n -> return $ Ref $ fromIntegral n
+
+reserved :: Monad m => Word8 -> m a
+reserved x = fail $ "Byte " ++ show x ++ " is reserved."
 
 pretty' :: Int -> Int -> Expr -> String
 pretty' i j e = replicate i ' ' ++
