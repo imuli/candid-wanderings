@@ -44,7 +44,19 @@ data Expr
   | Hash Hash
   | Star
   | Box
-  deriving (Eq, Generic, Show)
+  deriving (Generic, Show)
+
+instance Eq Expr where
+  (==) Star      Star      = True
+  (==) Box       Box       = True
+  (==) (Ref n)   (Ref m)   = n == m
+  (==) (Pi t f)  (Pi s g)  = t == s && f == g
+  (==) (Lam t f) (Lam s g) = t == s && f == g
+  (==) (App f a) (App g b) = a == b && f == g
+  (==) (Hash h)  (Hash k)  = h == k
+  (==) (Hash h)  e         = h == hash' e
+  (==) e         (Hash h)  = h == hash' e
+  (==) _         _         = False
 
 instance Binary Expr where
   put Star             = put (248 :: Word8)
@@ -134,7 +146,7 @@ typeIn hm = ti
                     App f a -> loftE (redux $ unhax $ ti ctx f) $
                       \x -> case x of
                                  Pi s t -> loftE (ti ctx a) $
-                                   \r -> if hashExpr r == hashExpr s
+                                   \r -> if r == s
                                             then Right $ replace a t
                                             else Left $ TypeMismatch e s r
                                  r      -> Left $ NotAFunction f r
