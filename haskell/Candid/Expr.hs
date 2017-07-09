@@ -30,6 +30,7 @@ pad n x xs = replicate (n - length xs) x ++ xs
 showHex :: Hash -> String
 showHex (Value n) = pad 16 '0' $ Numeric.showHex n ""
 
+-- This lets `hash expr == hash (hashOf expr)`.
 instance Hashable Hash where
   hashWithSalt salt (Value n) = hashWithSalt salt n
 instance Show Hash where
