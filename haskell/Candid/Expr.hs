@@ -182,7 +182,7 @@ typeIn hm = ti
     with ctx' t = Prelude.map (shift 1) $ t : ctx'
 
 hashExpr :: Expr -> Expr
-hashExpr = snd . enhash empty
+hashExpr = Hash . hash'
 
 hash' :: Expr -> Hash
 hash' e = case e of
