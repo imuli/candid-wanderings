@@ -11,30 +11,12 @@ module Candid.Expr
   , unhash
   , hashExpr
   , pretty
-  , Hash (..)
-  , showHex
   ) where
 
-import qualified Numeric (showHex)
 import GHC.Generics
-import Data.Hashable
+import Candid.Hash
 import Data.Map
 import Data.Binary
-
-newtype Hash = Value Word
-  deriving (Eq, Ord)
-
-pad :: Int -> a -> [a] -> [a]
-pad n x xs = replicate (n - length xs) x ++ xs
-
-showHex :: Hash -> String
-showHex (Value n) = pad 16 '0' $ Numeric.showHex n ""
-
--- This lets `hash expr == hash (hashOf expr)`.
-instance Hashable Hash where
-  hashWithSalt salt (Value n) = hashWithSalt salt n
-instance Show Hash where
-  showsPrec p h = showParen (p > 0) $ showString $ "Value 0x" ++ showHex h
 
 data Expr
   = Ref Word
@@ -59,25 +41,25 @@ instance Eq Expr where
   (==) _         _         = False
 
 instance Binary Expr where
-  put Star             = put (248 :: Word8)
-  put (Pi t f)         = put (249 :: Word8) >> put t >> put f
-  put (Lam t f)        = put (250 :: Word8) >> put t >> put f
-  put (App f a)        = put (251 :: Word8) >> put f >> put a
-  put (Hash (Value h)) = put (252 :: Word8) >> put h
-  put Box              = fail "Tried to serialize □."
-  put (Ref n)          = if n < 248
-                            then put ((fromIntegral n) :: Word8)
-                            else if n < 65536 + 248
-                                    then put (255 :: Word8) >>
-                                      put (fromIntegral (n - 248) :: Word16)
-                                    else fail "Reference is way too big."
+  put Star      = put (248 :: Word8)
+  put (Pi t f)  = put (249 :: Word8) >> put t >> put f
+  put (Lam t f) = put (250 :: Word8) >> put t >> put f
+  put (App f a) = put (251 :: Word8) >> put f >> put a
+  put (Hash h)  = put (252 :: Word8) >> put h
+  put Box       = fail "Tried to serialize □."
+  put (Ref n)   = if n < 248
+                     then put ((fromIntegral n) :: Word8)
+                     else if n < 65536 + 248
+                             then put (255 :: Word8) >>
+                               put (fromIntegral (n - 248) :: Word16)
+                             else fail "Reference is way too big."
   get = do x <- get :: Get Word8
            case x of
                 248 -> return Star
                 249 -> Pi <$> get <*> get
                 250 -> Lam <$> get <*> get
                 251 -> App <$> get <*> get
-                252 -> Hash . Value <$> get
+                252 -> Hash <$> get
                 253 -> reserved x
                 254 -> reserved x
                 255 -> Ref . ((+ 248) . fromIntegral :: Word16 -> Word) <$> get
@@ -95,14 +77,21 @@ pretty' i j e = replicate i ' ' ++
        App f a -> "$" ++ pretty' 1 j' f ++ "\n" ++ pretty' j j' a
        Star    -> "*"
        Box     -> "□"
-       Hash h  -> "#" ++ showHex h
+       Hash h  -> "#" ++ prettyHash h
   where
     j' = j + 2
 
 pretty :: Expr -> String
 pretty = pretty' 0 2
 
-instance Hashable Expr
+instance Hashable Expr where
+  hashedWith (Hash h)  = hashedWith h
+  hashedWith Star      = hashedWith (248 :: Word8)
+  hashedWith (Pi t f)  = hashedWith (249 :: Word8) . hashedWith t . hashedWith f
+  hashedWith (Lam t f) = hashedWith (250 :: Word8) . hashedWith t . hashedWith f
+  hashedWith (App f a) = hashedWith (251 :: Word8) . hashedWith f . hashedWith a
+  hashedWith Box       = hashedWith (254 :: Word8)
+  hashedWith (Ref n)   = hashedWith (255 :: Word8) . hashedWith n
 
 data TypeError
   = UntypedBox
@@ -187,7 +176,7 @@ hashExpr = Hash . hash'
 hash' :: Expr -> Hash
 hash' e = case e of
                Hash h -> h
-               _      -> Value $ fromIntegral (hash e)
+               _      -> hash e
 
 enhash :: Map Hash (Expr, Expr) -> Expr -> (Map Hash (Expr, Expr), Expr)
 enhash mh0 e = case e of
