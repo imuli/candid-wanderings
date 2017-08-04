@@ -3,7 +3,6 @@
 
 module Candid.Expr
   ( Expr(..)
-  , hashExpr
   , replace
   , shift
   , pretty
@@ -40,8 +39,8 @@ instance Eq Expr where
   (==) (TA  _ x) e         = x == e
   (==) e         (TA  _ x) = x == e
   (==) (Hash h)  (Hash k)  = h == k
-  (==) (Hash h)  e         = h == hash' e
-  (==) e         (Hash h)  = h == hash' e
+  (==) (Hash h)  e         = h == hash e
+  (==) e         (Hash h)  = h == hash e
   (==) _         _         = False
 
 getStar :: RP.ReadP Expr
@@ -154,14 +153,6 @@ instance Hashable Expr where
   hashedWith (Ref n)   = hashedWith (255 :: Word8) . hashedWith n
   hash (Hash h) = h
   hash e = hashedWith e nullHash
-
-hashExpr :: Expr -> Expr
-hashExpr = Hash . hash'
-
-hash' :: Expr -> Hash
-hash' e = case e of
-               Hash h -> h
-               _      -> hash e
 
 -- general form used by the following helpers
 rec :: (a -> a -> a) -> (Word -> Word -> a) -> (a -> a -> a) -> (a -> a -> a) -> a -> a -> (Hash -> a) -> Word -> Expr -> a
