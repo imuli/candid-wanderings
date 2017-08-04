@@ -10,11 +10,14 @@ module Candid.Expr
   , unhash
   , hashExpr
   , pretty
+  , readExpr
+  , readExprL
   ) where
 
 import Candid.Hash
 import Data.Map
 import Data.Binary
+import qualified Text.ParserCombinators.ReadP as RP
 
 data Expr
   = Ref Word
@@ -25,7 +28,7 @@ data Expr
   | Star
   | Box
   | Rem String Expr
-  deriving (Show)
+  deriving (Show, Read)
 
 instance Eq Expr where
   (==) Star      Star      = True
@@ -40,6 +43,47 @@ instance Eq Expr where
   (==) (Hash h)  e         = h == hash' e
   (==) e         (Hash h)  = h == hash' e
   (==) _         _         = False
+
+getStar :: RP.ReadP Expr
+getStar = RP.char '*' *> return Star
+
+getBox :: RP.ReadP Expr
+getBox = RP.char '□' *> return Box
+
+digit :: RP.ReadP Char
+digit = RP.satisfy $ \c -> '0' <= c && c <= '9'
+
+getRef :: RP.ReadP Expr
+getRef = Ref <$> read <$> RP.many1 digit
+
+getPi :: RP.ReadP Expr
+getPi = RP.char 'π' *> (Pi <$> readExpr <*> readExpr)
+
+getLam :: RP.ReadP Expr
+getLam = RP.char 'λ' *> (Lam <$> readExpr <*> readExpr)
+
+getApp :: RP.ReadP Expr
+getApp = RP.char '$' *> (Lam <$> readExpr <*> readExpr)
+
+getRem :: RP.ReadP Expr
+getRem = RP.string "-- " *> (Rem <$> RP.munch (/= '\n') <*> readExpr)
+
+getHash :: RP.ReadP Expr
+getHash = RP.char '#' *> (Hash <$> readHash)
+
+readExpr :: RP.ReadP Expr
+readExpr = RP.skipSpaces *> RP.choice [ getStar
+                                      , getBox
+                                      , getRef
+                                      , getPi
+                                      , getLam
+                                      , getApp
+                                      , getRem
+                                      , getHash
+                                      ]
+
+readExprL :: RP.ReadP [Expr]
+readExprL = RP.sepBy readExpr (RP.optional $ RP.char '\n')
 
 instance Binary Expr where
   put Star      = put (248 :: Word8)

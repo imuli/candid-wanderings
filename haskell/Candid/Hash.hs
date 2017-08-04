@@ -2,6 +2,7 @@ module Candid.Hash
   ( Hash(..)
   , Hashable(..)
   , prettyHash
+  , readHash
   ) where
 
 import qualified Data.Vector as V
@@ -9,6 +10,8 @@ import qualified Numeric
 import Data.Bits
 import Data.Word
 import Data.Binary
+import Data.Char (ord)
+import qualified Text.ParserCombinators.ReadP as RP
 
 iv :: V.Vector Word32
 iv = V.fromList [ 0x6a09e667
@@ -111,8 +114,24 @@ byteSwap x =
 prettyHash :: Hash -> String
 prettyHash (Blake2 h) = concat $ V.map (showHex . byteSwap) h
 
+getHex :: RP.ReadP Word32
+getHex = RP.choice [ (\c -> fromIntegral $ ord c - ord '0') <$> RP.satisfy (\c -> '0' <= c && c <= '9')
+                   , (\c -> fromIntegral $ ord c - ord 'A' + 10) <$> RP.satisfy (\c -> 'A' <= c && c <= 'F')
+                   , (\c -> fromIntegral $ ord c - ord 'a' + 10) <$> RP.satisfy (\c -> 'a' <= c && c <= 'f')
+                   ]
+
+getLEWord32 :: RP.ReadP Word32
+getLEWord32 = byteSwap <$> foldl (\s a -> 16 * s + a) 0 <$> RP.count 8 getHex
+
+readHash :: RP.ReadP Hash
+readHash = Blake2 <$> V.fromList <$> RP.count 8 getLEWord32
+
+instance Read Hash where
+  readsPrec _ = RP.readP_to_S readHash
+
 instance Show Hash where
-  showsPrec p h = showParen (p > 0) $ showString $ "fromStr \"" ++ prettyHash h ++ "\""
+  showsPrec _ h = (prettyHash h ++)
+
 instance Binary Hash where
   put (Blake2 h) = put $ V.toList h
   get = Blake2 <$> V.fromList <$> get
