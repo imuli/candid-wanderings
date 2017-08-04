@@ -12,6 +12,7 @@ module Candid.Expr
   , pretty
   , readExpr
   , readExprL
+  , isBoxy
   ) where
 
 import Candid.Hash
@@ -50,6 +51,9 @@ getStar = RP.char '*' *> return Star
 getBox :: RP.ReadP Expr
 getBox = RP.char '□' *> return Box
 
+getBoxEOF :: RP.ReadP Expr
+getBoxEOF = RP.eof *> return Box
+
 digit :: RP.ReadP Char
 digit = RP.satisfy $ \c -> '0' <= c && c <= '9'
 
@@ -80,6 +84,7 @@ readExpr = RP.skipSpaces *> RP.choice [ getStar
                                       , getApp
                                       , getRem
                                       , getHash
+                                      , getBoxEOF
                                       ]
 
 readExprL :: RP.ReadP [Expr]
@@ -281,6 +286,10 @@ rec app ref lam pi_ sta box hsh = inner
 -- if there isn't any we can η-reduce
 etable :: Expr -> Bool
 etable = rec (&&) (/=) (&&) (&&) True True (\_ -> True) 0
+
+-- check for boxes
+isBoxy :: Expr -> Bool
+isBoxy = rec (||) (\_ _ -> False) (||) (||) False True (\_ -> False) 0
 
 -- adjust instances of (Ref 0) and above by some amount
 shift :: Word -> Expr -> Expr
