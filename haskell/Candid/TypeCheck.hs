@@ -7,6 +7,7 @@ module Candid.TypeCheck
 
 import Candid.Expr
 import Candid.Hash
+import Candid.Reduce
 import Data.Map
 
 data TypeError

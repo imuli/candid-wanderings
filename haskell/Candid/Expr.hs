@@ -3,7 +3,6 @@
 
 module Candid.Expr
   ( Expr(..)
-  , reduce
   , unhash
   , hashExpr
   , replace
@@ -204,11 +203,6 @@ rec app ref lam pi_ sta box hsh = inner
 --isClosed :: Expr -> Bool
 --isClosed = rec (&&) (<) (&&) (&&) (\_ -> True) 0
 
--- check for an instance of (Ref 0) in an expression
--- if there isn't any we can η-reduce
-etable :: Expr -> Bool
-etable = rec (&&) (/=) (&&) (&&) True True (\_ -> True) 0
-
 -- check for boxes
 isBoxy :: Expr -> Bool
 isBoxy = rec (||) (\_ _ -> False) (||) (||) False True (\_ -> False) 0
@@ -220,24 +214,3 @@ shift z = rec App (\n c -> if n >= c then Ref (n + z) else Ref n) Lam Pi Star Bo
 -- replace instances of (Ref 0)
 replace :: Expr -> Expr -> Expr
 replace a = shift (-1) . rec App (\n c -> if n == c then shift (c+1) a else Ref n) Lam Pi Star Box Hash 0
-
--- beta and eta reduce an expression
-reduce :: Expr -> Expr
-reduce e = case e of
-                -- TODO is there some analogy of η-reduction here?
-                Pi t x -> Pi (reduce t) (reduce x)
-                -- if we can reduce f to a lambda, we can carry out the application
-                App f a -> case reduce f of
-                                Lam _ x -> reduce $ replace (reduce a) (reduce x) -- β-reduce
-                                f' -> App f' (reduce a)
-                -- if we can reduce x to a lambda and
-                Lam t x -> case reduce x of
-                                App f (Ref 0) -> if etable f
-                                                    then reduce (shift (-1) f) -- η-reduce
-                                                    else Lam (reduce t) $ App (reduce f) (Ref 0)
-                                x' -> Lam (reduce t) x'
-                -- reduction removes remarks
-                Rem _ x -> reduce x
-                -- reduction removes type annotation
-                TA _ f -> reduce f
-                _ -> e
