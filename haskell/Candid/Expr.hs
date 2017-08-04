@@ -13,6 +13,7 @@ module Candid.Expr
   , readExpr
   , readExprL
   , isBoxy
+  , hashify
   ) where
 
 import Candid.Hash
@@ -249,6 +250,19 @@ hash' :: Expr -> Hash
 hash' e = case e of
                Hash h -> h
                _      -> hash e
+
+hashify :: Map Hash (Expr, Expr) -> Expr -> Expr
+hashify mh e = case e of
+                    App t f -> ify $ App (hashify mh t) (hashify mh f)
+                    Lam f a -> ify $ Lam (hashify mh f) (hashify mh a)
+                    Pi f a  -> ify $ Pi (hashify mh f) (hashify mh a)
+                    Rem s x -> Rem s $ hashify mh x
+                    _ -> e
+  where
+    ify x = let h = hash' x
+             in case Data.Map.lookup h mh of
+                     Nothing -> x
+                     Just _  -> Hash h
 
 enhash :: Map Hash (Expr, Expr) -> Expr -> (Map Hash (Expr, Expr), Expr)
 enhash mh0 e = case e of
