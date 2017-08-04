@@ -1,7 +1,7 @@
 {-#OPTIONS_GHC -Wall #-}
 
 module Candid.TypeCheck
-  ( TypeError(..) 
+  ( TypeError(..)
   , typeOf
   ) where
 
@@ -9,6 +9,7 @@ import Candid.Expr
 import Candid.Hash
 import Candid.Reduce
 import Candid.Store
+import Candid.Util
 
 data TypeError
   = UntypedBox
@@ -93,9 +94,8 @@ typeIn hm = ti
     redux x = loftE x $ Right . reduce
     -- prepare a new context given another type on the stack
     with :: [Expr] -> Expr -> [Expr]
-    with ctx' t = Prelude.map (shift 1) $ t : ctx'
+    with ctx' t = map (shift 1) $ t : ctx'
 
 -- Type check a closed expression.
 typeOf :: Store -> Expr -> Either TypeError Expr
 typeOf hm = typeIn hm []
-

@@ -3,12 +3,9 @@
 
 module Candid.Expr
   ( Expr(..)
-  , replace
-  , shift
   , pretty
   , readExpr
   , readExprL
-  , isBoxy
   ) where
 
 import Candid.Hash
@@ -153,33 +150,3 @@ instance Hashable Expr where
   hashedWith (Ref n)   = hashedWith (255 :: Word8) . hashedWith n
   hash (Hash h) = h
   hash e = hashedWith e nullHash
-
--- general form used by the following helpers
-rec :: (a -> a -> a) -> (Word -> Word -> a) -> (a -> a -> a) -> (a -> a -> a) -> a -> a -> (Hash -> a) -> Word -> Expr -> a
-rec app ref lam pi_ sta box hsh = inner
-  where
-   inner cut e = case e of
-                      Ref n   -> n `ref` cut
-                      App f a -> (inner cut f) `app` (inner cut a)
-                      Lam t f -> (inner cut t) `lam` (inner (cut+1) f)
-                      Pi t f  -> (inner cut t) `pi_` (inner (cut+1) f)
-                      Rem _ x -> inner cut x
-                      TA _ x  -> inner cut x
-                      Star    -> sta
-                      Box     -> box
-                      Hash h  -> hsh h
-
---isClosed :: Expr -> Bool
---isClosed = rec (&&) (<) (&&) (&&) (\_ -> True) 0
-
--- check for boxes
-isBoxy :: Expr -> Bool
-isBoxy = rec (||) (\_ _ -> False) (||) (||) False True (\_ -> False) 0
-
--- adjust instances of (Ref 0) and above by some amount
-shift :: Word -> Expr -> Expr
-shift z = rec App (\n c -> if n >= c then Ref (n + z) else Ref n) Lam Pi Star Box Hash 0
-
--- replace instances of (Ref 0)
-replace :: Expr -> Expr -> Expr
-replace a = shift (-1) . rec App (\n c -> if n == c then shift (c+1) a else Ref n) Lam Pi Star Box Hash 0

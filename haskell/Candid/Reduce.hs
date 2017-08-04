@@ -5,27 +5,22 @@ module Candid.Reduce
   ) where
 
 import Candid.Expr
-import Candid.Hash
-
--- general form used by the following helpers
-rec :: (a -> a -> a) -> (Word -> Word -> a) -> (a -> a -> a) -> (a -> a -> a) -> a -> a -> (Hash -> a) -> Word -> Expr -> a
-rec app ref lam pi_ sta box hsh = inner
-  where
-   inner cut e = case e of
-                      Ref n   -> n `ref` cut
-                      App f a -> (inner cut f) `app` (inner cut a)
-                      Lam t f -> (inner cut t) `lam` (inner (cut+1) f)
-                      Pi t f  -> (inner cut t) `pi_` (inner (cut+1) f)
-                      Rem _ x -> inner cut x
-                      TA _ x  -> inner cut x
-                      Star    -> sta
-                      Box     -> box
-                      Hash h  -> hsh h
+import Candid.Util
 
 -- check for an instance of (Ref 0) in an expression
 -- if there isn't any we can η-reduce
 etable :: Expr -> Bool
-etable = rec (&&) (/=) (&&) (&&) True True (\_ -> True) 0
+etable = i 0
+  where
+    i :: Word -> Expr -> Bool
+    i c e = case e of
+                 Ref n   -> n /= c
+                 App f a -> (i c f) && (i c a)
+                 Lam t f -> (i c t) && (i (c+1) f)
+                 Pi t f  -> (i c t) && (i (c+1) f)
+                 Rem _ x -> i c x
+                 TA  _ x -> i c x
+                 _ -> True
 
 -- beta and eta reduce an expression
 reduce :: Expr -> Expr
