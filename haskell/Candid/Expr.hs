@@ -24,6 +24,7 @@ data Expr
   | Hash Hash
   | Star
   | Box
+  | Rem String Expr
   deriving (Show)
 
 instance Eq Expr where
@@ -33,6 +34,8 @@ instance Eq Expr where
   (==) (Pi t f)  (Pi s g)  = t == s && f == g
   (==) (Lam t f) (Lam s g) = t == s && f == g
   (==) (App f a) (App g b) = a == b && f == g
+  (==) (Rem _ x) e         = x == e
+  (==) e         (Rem _ x) = x == e
   (==) (Hash h)  (Hash k)  = h == k
   (==) (Hash h)  e         = h == hash' e
   (==) e         (Hash h)  = h == hash' e
@@ -44,6 +47,7 @@ instance Binary Expr where
   put (Lam t f) = put (250 :: Word8) >> put t >> put f
   put (App f a) = put (251 :: Word8) >> put f >> put a
   put (Hash h)  = put (252 :: Word8) >> put h
+  put (Rem n x) = put (253 :: Word8) >> put n >> put x
   put Box       = fail "Tried to serialize □."
   put (Ref n)   = if n < 248
                      then put ((fromIntegral n) :: Word8)
@@ -58,7 +62,7 @@ instance Binary Expr where
                 250 -> Lam <$> get <*> get
                 251 -> App <$> get <*> get
                 252 -> Hash <$> get
-                253 -> reserved x
+                253 -> Rem <$> get <*> get
                 254 -> reserved x
                 255 -> Ref . ((+ 248) . fromIntegral :: Word16 -> Word) <$> get
                 n -> return $ Ref $ fromIntegral n
@@ -73,6 +77,7 @@ pretty' i j e = replicate i ' ' ++
        Lam t f -> "λ" ++ pretty' 1 j' t ++ "\n" ++ pretty' j j' f
        Pi t f  -> "π" ++ pretty' 1 j' t ++ "\n" ++ pretty' j j' f
        App f a -> "$" ++ pretty' 1 j' f ++ "\n" ++ pretty' j j' a
+       Rem n x -> "-- " ++ n ++ "\n" ++ pretty' i j x
        Star    -> "*"
        Box     -> "□"
        Hash h  -> "#" ++ prettyHash h
@@ -88,6 +93,7 @@ instance Hashable Expr where
   hashedWith (Pi t f)  = hashedWith (249 :: Word8) . hashedWith t . hashedWith f
   hashedWith (Lam t f) = hashedWith (250 :: Word8) . hashedWith t . hashedWith f
   hashedWith (App f a) = hashedWith (251 :: Word8) . hashedWith f . hashedWith a
+  hashedWith (Rem _ x) = hashedWith x
   hashedWith Box       = hashedWith (254 :: Word8)
   hashedWith (Ref n)   = hashedWith (255 :: Word8) . hashedWith n
 
@@ -120,6 +126,8 @@ typeIn hm = ti
                     Box -> Left UntypedBox
                     -- Star has the type of Box.
                     Star -> Right Box
+                    -- Remarks are merely that.
+                    Rem _ x -> ti ctx x
                     -- A lambda (that checks) has an input and output type joined by Pi.
                     -- The input type is simply t.
                     -- The output type is the type of it's body.
@@ -215,6 +223,7 @@ rec app ref lam pi_ sta box hsh = inner
                       App f a -> (inner cut f) `app` (inner cut a)
                       Lam t f -> (inner cut t) `lam` (inner (cut+1) f)
                       Pi t f  -> (inner cut t) `pi_` (inner (cut+1) f)
+                      Rem _ x -> inner cut x
                       Star    -> sta
                       Box     -> box
                       Hash h  -> hsh h
@@ -250,5 +259,6 @@ reduce e = case e of
                                                     then reduce (shift (-1) f) -- η-reduce
                                                     else Lam (reduce t) $ App (reduce f) (Ref 0)
                                 x' -> Lam (reduce t) x'
+                -- reduction removes remarks
+                Rem _ x -> reduce x
                 _ -> e
-
