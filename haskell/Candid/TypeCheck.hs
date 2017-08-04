@@ -8,7 +8,7 @@ module Candid.TypeCheck
 import Candid.Expr
 import Candid.Hash
 import Candid.Reduce
-import Data.Map
+import Candid.Store
 
 data TypeError
   = UntypedBox
@@ -26,7 +26,7 @@ index 0 (x : _)  = Just x
 index n (_ : xs) = index (n-1) xs
 
 -- type check an expression in a context
-typeIn :: Map Hash (Expr, Expr) -> [Expr] -> Expr -> Either TypeError Expr
+typeIn :: Store -> [Expr] -> Expr -> Either TypeError Expr
 typeIn hm = ti
   where
     ti ctx e = case e of
@@ -78,9 +78,9 @@ typeIn hm = ti
                                         Box  -> Right Box
                                         _       -> Left $ InvalidOutputType x'
                     -- Look up the hash and extract it's type.
-                    Hash h -> case Data.Map.lookup h hm of
+                    Hash h -> case find e hm of
                                    Nothing     -> Left $ HashNotFound h
-                                   Just (_, t) -> Right $ unhash hm t
+                                   Just (_, t) -> Right $ t
     -- automatically propogate errors
     loftE :: Either a b -> (b -> Either a b) -> Either a b
     loftE (Left er) _ = Left er
@@ -96,6 +96,6 @@ typeIn hm = ti
     with ctx' t = Prelude.map (shift 1) $ t : ctx'
 
 -- Type check a closed expression.
-typeOf :: Map Hash (Expr, Expr) -> Expr -> Either TypeError Expr
+typeOf :: Store -> Expr -> Either TypeError Expr
 typeOf hm = typeIn hm []
 

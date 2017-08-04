@@ -3,7 +3,6 @@
 
 module Candid.Expr
   ( Expr(..)
-  , unhash
   , hashExpr
   , replace
   , shift
@@ -11,11 +10,9 @@ module Candid.Expr
   , readExpr
   , readExprL
   , isBoxy
-  , hashify
   ) where
 
 import Candid.Hash
-import Data.Map
 import Data.Binary
 import qualified Text.ParserCombinators.ReadP as RP
 
@@ -155,6 +152,8 @@ instance Hashable Expr where
   hashedWith (TA _ x)  = hashedWith x
   hashedWith Box       = hashedWith (254 :: Word8)
   hashedWith (Ref n)   = hashedWith (255 :: Word8) . hashedWith n
+  hash (Hash h) = h
+  hash e = hashedWith e nullHash
 
 hashExpr :: Expr -> Expr
 hashExpr = Hash . hash'
@@ -163,27 +162,6 @@ hash' :: Expr -> Hash
 hash' e = case e of
                Hash h -> h
                _      -> hash e
-
-hashify :: Map Hash (Expr, Expr) -> Expr -> Expr
-hashify mh e = case e of
-                    App t f -> ify $ App (hashify mh t) (hashify mh f)
-                    Lam f a -> ify $ Lam (hashify mh f) (hashify mh a)
-                    Pi f a  -> ify $ Pi (hashify mh f) (hashify mh a)
-                    Rem s x -> Rem s $ hashify mh x
-                    _ -> e
-  where
-    ify x = let h = hash' x
-             in case Data.Map.lookup h mh of
-                     Nothing -> x
-                     Just _  -> Hash h
-
-unhash :: Map Hash (Expr, Expr) -> Expr -> Expr
-unhash hm e = rec App (\n _ -> Ref n) Lam Pi Star Box hsh 0 e
-  where
-    hsh :: Hash -> Expr
-    hsh h = case Data.Map.lookup h hm of
-                   Nothing -> Hash h
-                   Just (x, _) -> unhash hm x
 
 -- general form used by the following helpers
 rec :: (a -> a -> a) -> (Word -> Word -> a) -> (a -> a -> a) -> (a -> a -> a) -> a -> a -> (Hash -> a) -> Word -> Expr -> a

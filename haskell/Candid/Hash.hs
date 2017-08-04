@@ -3,6 +3,7 @@ module Candid.Hash
   , Hashable(..)
   , prettyHash
   , readHash
+  , nullHash
   ) where
 
 import qualified Data.Vector as V
