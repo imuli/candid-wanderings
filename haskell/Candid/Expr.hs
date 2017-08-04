@@ -29,6 +29,7 @@ data Expr
   | Star
   | Box
   | Rem String Expr
+  | TA Expr Expr
   deriving (Show, Read)
 
 instance Eq Expr where
@@ -40,6 +41,8 @@ instance Eq Expr where
   (==) (App f a) (App g b) = a == b && f == g
   (==) (Rem _ x) e         = x == e
   (==) e         (Rem _ x) = x == e
+  (==) (TA  _ x) e         = x == e
+  (==) e         (TA  _ x) = x == e
   (==) (Hash h)  (Hash k)  = h == k
   (==) (Hash h)  e         = h == hash' e
   (==) e         (Hash h)  = h == hash' e
@@ -72,6 +75,9 @@ getApp = RP.char '$' *> (Lam <$> readExpr <*> readExpr)
 getRem :: RP.ReadP Expr
 getRem = RP.string "-- " *> (Rem <$> RP.munch (/= '\n') <*> readExpr)
 
+getType :: RP.ReadP Expr
+getType = RP.char ':' *> (TA <$> readExpr <*> readExpr)
+
 getHash :: RP.ReadP Expr
 getHash = RP.char '#' *> (Hash <$> readHash)
 
@@ -83,6 +89,7 @@ readExpr = RP.skipSpaces *> RP.choice [ getStar
                                       , getLam
                                       , getApp
                                       , getRem
+                                      , getType
                                       , getHash
                                       , getBoxEOF
                                       ]
@@ -97,6 +104,8 @@ instance Binary Expr where
   put (App f a) = put (251 :: Word8) >> put f >> put a
   put (Hash h)  = put (252 :: Word8) >> put h
   put (Rem n x) = put (253 :: Word8) >> put n >> put x
+  -- skip type annotations in binary format
+  put (TA _ x)  = put x
   put Box       = fail "Tried to serialize □."
   put (Ref n)   = if n < 248
                      then put ((fromIntegral n) :: Word8)
@@ -125,6 +134,7 @@ pretty' i j e = replicate i ' ' ++
        Ref n   -> show n
        Lam t f -> "λ" ++ pretty' 1 j' t ++ "\n" ++ pretty' j j' f
        Pi t f  -> "π" ++ pretty' 1 j' t ++ "\n" ++ pretty' j j' f
+       TA t f  -> ":" ++ pretty' 1 j' t ++ "\n" ++ pretty' j j' f
        App f a -> "$" ++ pretty' 1 j' f ++ "\n" ++ pretty' j j' a
        Rem n x -> "-- " ++ n ++ "\n" ++ pretty' i j x
        Star    -> "*"
@@ -143,6 +153,7 @@ instance Hashable Expr where
   hashedWith (Lam t f) = hashedWith (250 :: Word8) . hashedWith t . hashedWith f
   hashedWith (App f a) = hashedWith (251 :: Word8) . hashedWith f . hashedWith a
   hashedWith (Rem _ x) = hashedWith x
+  hashedWith (TA _ x)  = hashedWith x
   hashedWith Box       = hashedWith (254 :: Word8)
   hashedWith (Ref n)   = hashedWith (255 :: Word8) . hashedWith n
 
@@ -177,6 +188,12 @@ typeIn hm = ti
                     Star -> Right Box
                     -- Remarks are merely that.
                     Rem _ x -> ti ctx x
+                    -- Type Annotation must match!
+                    TA t f -> loftE (redux $ ti ctx f) $
+                      \r -> if r == s
+                               then Right r
+                               else Left $ TypeMismatch e s r
+                         where s = reduce t
                     -- A lambda (that checks) has an input and output type joined by Pi.
                     -- The input type is simply t.
                     -- The output type is the type of it's body.
@@ -275,6 +292,7 @@ rec app ref lam pi_ sta box hsh = inner
                       Lam t f -> (inner cut t) `lam` (inner (cut+1) f)
                       Pi t f  -> (inner cut t) `pi_` (inner (cut+1) f)
                       Rem _ x -> inner cut x
+                      TA _ x  -> inner cut x
                       Star    -> sta
                       Box     -> box
                       Hash h  -> hsh h
@@ -316,4 +334,6 @@ reduce e = case e of
                                 x' -> Lam (reduce t) x'
                 -- reduction removes remarks
                 Rem _ x -> reduce x
+                -- reduction removes type annotation
+                TA _ f -> reduce f
                 _ -> e
