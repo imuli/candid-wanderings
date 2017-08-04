@@ -233,6 +233,8 @@ enhash mh0 e = case e of
                     App t f -> mkHash App t f
                     Lam f a -> mkHash Lam f a
                     Pi f a  -> mkHash Pi f a
+                    Rem s x -> let (mh1, x') = enhash mh0 x
+                                in (mh1, Rem s x')
                     _       -> (mh0, e)
   where
     mkHash :: (Expr -> Expr -> Expr) -> Expr -> Expr -> (Map Hash (Expr, Expr), Expr)
