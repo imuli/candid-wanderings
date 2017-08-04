@@ -1,5 +1,4 @@
 {-#OPTIONS_GHC -Wall #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Candid.Expr
@@ -13,7 +12,6 @@ module Candid.Expr
   , pretty
   ) where
 
-import GHC.Generics
 import Candid.Hash
 import Data.Map
 import Data.Binary
@@ -26,7 +24,7 @@ data Expr
   | Hash Hash
   | Star
   | Box
-  deriving (Generic, Show)
+  deriving (Show)
 
 instance Eq Expr where
   (==) Star      Star      = True
