@@ -2,6 +2,7 @@
 
 module Candid.Store
   ( Store
+  , empty
   , find
   , add
   , unhash
