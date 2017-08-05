@@ -34,10 +34,11 @@ hashWith st = hw
              in maybe x (const $ Hash h) $ M.lookup h st
     hw :: Expr -> Expr
     hw e = case e of
-              App t f -> ify $ App (hw t) (hw f)
-              Lam f a -> ify $ Lam (hw f) (hw a)
-              Pi f a  -> ify $ Pi (hw f) (hw a)
+              App f a -> ify $ App (hw f) (hw a)
+              Lam t f -> ify $ Lam (hw t) (hw f)
+              Pi t f  -> ify $ Pi (hw t) (hw f)
               Rem s x -> Rem s $ hw x
+              TA t f  -> TA (hw t) (hw f)
               _ -> e
 
 hashInto :: Expr -> Expr -> Store -> Store
@@ -47,10 +48,11 @@ unhash :: Store -> Expr -> Expr
 unhash st = uh
   where
     uh e = case e of
-                App t f -> App (uh t) (uh f)
-                Lam f a -> Lam (uh f) (uh a)
-                Pi f a  -> Pi (uh f) (uh a)
+                App f a -> App (uh f) (uh a)
+                Lam t f -> Lam (uh t) (uh f)
+                Pi t f  -> Pi (uh t) (uh f)
                 Rem s x -> Rem s (uh x)
                 Hash h  -> maybe e (uh . fst) $ M.lookup h st
+                TA t f -> TA (uh t) (uh f)
                 _       -> e
 
