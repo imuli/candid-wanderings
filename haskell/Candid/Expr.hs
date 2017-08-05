@@ -46,9 +46,6 @@ getStar = RP.char '*' *> return Star
 getBox :: RP.ReadP Expr
 getBox = RP.char '□' *> return Box
 
-getBoxEOF :: RP.ReadP Expr
-getBoxEOF = RP.eof *> return Box
-
 digit :: RP.ReadP Char
 digit = RP.satisfy $ \c -> '0' <= c && c <= '9'
 
@@ -62,7 +59,7 @@ getLam :: RP.ReadP Expr
 getLam = RP.char 'λ' *> (Lam <$> readExpr <*> readExpr)
 
 getApp :: RP.ReadP Expr
-getApp = RP.char '$' *> (Lam <$> readExpr <*> readExpr)
+getApp = RP.char '$' *> (App <$> readExpr <*> readExpr)
 
 getRem :: RP.ReadP Expr
 getRem = RP.string "-- " *> (Rem <$> RP.munch (/= '\n') <*> readExpr)
@@ -83,7 +80,6 @@ readExpr = RP.skipSpaces *> RP.choice [ getStar
                                       , getRem
                                       , getType
                                       , getHash
-                                      , getBoxEOF
                                       ]
 
 readExprL :: RP.ReadP [Expr]
