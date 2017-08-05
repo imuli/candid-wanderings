@@ -8,6 +8,7 @@ module Candid.Expr
   , readExprL
   ) where
 
+import Control.Applicative
 import Candid.Hash
 import Data.Binary
 import qualified Text.ParserCombinators.ReadP as RP
@@ -53,13 +54,13 @@ getRef :: RP.ReadP Expr
 getRef = Ref <$> read <$> RP.many1 digit
 
 getPi :: RP.ReadP Expr
-getPi = RP.char 'π' *> (Pi <$> readExpr <*> readExpr)
+getPi = (RP.char 'π' <|> RP.char 'x') *> (Pi <$> readExpr <*> readExpr)
 
 getLam :: RP.ReadP Expr
-getLam = RP.char 'λ' *> (Lam <$> readExpr <*> readExpr)
+getLam = (RP.char 'λ' <|> RP.char '\\') *> (Lam <$> readExpr <*> readExpr)
 
 getApp :: RP.ReadP Expr
-getApp = RP.char '$' *> (App <$> readExpr <*> readExpr)
+getApp = (RP.char '$' <|> RP.char '`') *> (App <$> readExpr <*> readExpr)
 
 getRem :: RP.ReadP Expr
 getRem = RP.string "-- " *> (Rem <$> RP.munch (/= '\n') <*> readExpr)
@@ -135,14 +136,12 @@ pretty :: Expr -> String
 pretty = pretty' 0 2
 
 instance Hashable Expr where
-  hashedWith (Hash h)  = hashedWith h
-  hashedWith Star      = hashedWith (248 :: Word8)
-  hashedWith (Pi t f)  = hashedWith (249 :: Word8) . hashedWith t . hashedWith f
-  hashedWith (Lam t f) = hashedWith (250 :: Word8) . hashedWith t . hashedWith f
-  hashedWith (App f a) = hashedWith (251 :: Word8) . hashedWith f . hashedWith a
-  hashedWith (Rem _ x) = hashedWith x
-  hashedWith (TA _ x)  = hashedWith x
-  hashedWith Box       = hashedWith (254 :: Word8)
-  hashedWith (Ref n)   = hashedWith (255 :: Word8) . hashedWith n
-  hash (Hash h) = h
-  hash e = hashedWith e nullHash
+  hash (Hash h)  = h
+  hash Star      = (248 :: Word8) `hashedWith` nullHash
+  hash (Pi t f)  = (249 :: Word8) `hashedWith` (hash t `hashedWith` hash f)
+  hash (Lam t f) = (250 :: Word8) `hashedWith` (hash t `hashedWith` hash f)
+  hash (App f a) = (251 :: Word8) `hashedWith` (hash f `hashedWith` hash a)
+  hash (Rem _ x) = hash x
+  hash (TA _ x)  = hash x
+  hash Box       = (254 :: Word8) `hashedWith` nullHash
+  hash (Ref n)   = (255 :: Word8) `hashedWith` (n `hashedWith` nullHash)

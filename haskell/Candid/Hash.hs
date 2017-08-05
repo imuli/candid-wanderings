@@ -139,6 +139,7 @@ instance Binary Hash where
 
 class Hashable a where
   hashedWith :: a -> Hash -> Hash
+  hashedWith x h = hash x `hashedWith` h
   hash :: a -> Hash
   hash = flip hashedWith nullHash
 
