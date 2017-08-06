@@ -63,7 +63,8 @@ getApp :: RP.ReadP Expr
 getApp = (RP.char '$' <|> RP.char '`') *> (App <$> readExpr <*> readExpr)
 
 getRem :: RP.ReadP Expr
-getRem = RP.string "-- " *> (Rem <$> RP.munch (/= '\n') <*> readExpr)
+getRem = RP.string "-- " *> (Rem <$> RP.munch (/= '\n') <*> readExpr) <|>
+         (flip Rem) Box <$> (RP.char '(' *> RP.munch (/= ')') <* RP.char ')' )
 
 getType :: RP.ReadP Expr
 getType = RP.char ':' *> (TA <$> readExpr <*> readExpr)
@@ -125,6 +126,7 @@ pretty' i j e = replicate i ' ' ++
        Pi t f  -> "π" ++ pretty' 1 j' t ++ "\n" ++ pretty' j j' f
        TA t f  -> ":" ++ pretty' 1 j' t ++ "\n" ++ pretty' j j' f
        App f a -> "$" ++ pretty' 1 j' f ++ "\n" ++ pretty' j j' a
+       Rem n Box -> "(" ++ n ++ ")"
        Rem n x -> "-- " ++ n ++ "\n" ++ pretty' i j x
        Star    -> "*"
        Box     -> "□"
