@@ -81,7 +81,7 @@ typeIn hm = ti
                     -- Look up the hash and extract it's type.
                     Hash h -> case find e hm of
                                    Nothing     -> Left $ HashNotFound h
-                                   Just (_, t) -> Right $ t
+                                   Just entry -> Right $ entryType entry
     -- automatically propogate errors
     loftE :: Either a b -> (b -> Either a b) -> Either a b
     loftE (Left er) _ = Left er

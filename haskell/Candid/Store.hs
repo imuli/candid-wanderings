@@ -2,8 +2,13 @@
 
 module Candid.Store
   ( Store
+  , Entry
+  , entryExpr
+  , entryType
+  , entryName
   , empty
   , find
+  , findName
   , add
   , unhash
   , hashOf
@@ -15,16 +20,29 @@ import Candid.Expr
 import Candid.Hash
 import Data.Map as M
 
-type Store = Map Hash (Expr, Expr)
+type Entry = (String, Expr, Expr)
+type Store = Map Hash Entry
+
+entryName :: Entry -> String
+entryName (n, _, _) = n
+
+entryExpr :: Entry -> Expr
+entryExpr (_, e, _) = e
+
+entryType :: Entry -> Expr
+entryType (_, _, t) = t
 
 hashOf :: Expr -> Expr
 hashOf e = Hash $ hash e
 
-find :: Expr -> Store -> Maybe (Expr, Expr)
+find :: Expr -> Store -> Maybe Entry
 find e st = M.lookup (hash e) st
 
-add :: Expr -> Expr -> Store -> Store
-add e t st = M.insertWith (flip const) (hash e) (e, t) st
+findName :: String -> Store -> Maybe Entry
+findName n st = M.lookup (hash n) st
+
+add :: String -> Expr -> Expr -> Store -> Store
+add n e t st = M.insert (hash n) (n, e,t) $ M.insertWith (flip const) (hash e) (n, e, t) st
 
 hashWith :: Store -> Expr -> Expr
 hashWith st = hw
@@ -41,8 +59,8 @@ hashWith st = hw
               TA t f  -> TA (hw t) (hw f)
               _ -> e
 
-hashInto :: Expr -> Expr -> Store -> Store
-hashInto e t st = add (hashWith st e) (hashWith st t) st
+hashInto :: String -> Expr -> Expr -> Store -> Store
+hashInto n e t st = add n (hashWith st e) (hashWith st t) st
 
 unhash :: Store -> Expr -> Expr
 unhash st = uh
@@ -52,7 +70,7 @@ unhash st = uh
                 Lam t f -> Lam (uh t) (uh f)
                 Pi t f  -> Pi (uh t) (uh f)
                 Rem s x -> Rem s (uh x)
-                Hash h  -> maybe e (uh . fst) $ M.lookup h st
+                Hash h  -> maybe e (uh . entryExpr) $ M.lookup h st
                 TA t f -> TA (uh t) (uh f)
                 _       -> e
 

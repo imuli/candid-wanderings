@@ -166,6 +166,13 @@ instance Hashable Word8 where
 instance Hashable Word where
   hashedWith msg = hashedWith (fromIntegral msg :: Word64)
 
+instance Hashable Char where
+  hashedWith msg = hashedWith (fromIntegral (ord msg) :: Word64)
+
+instance Hashable a => Hashable [a] where
+  hash [] = nullHash
+  hash (x : xs) = hashedWith x $ hash xs
+
 nullHash :: Hash
 nullHash = Blake2 $ V.fromList $ replicate 8 0
 
