@@ -60,7 +60,7 @@ typeIn hm = ti
                     -- with any references to that lambda replaced.
                     App f a -> loftE (redux $ unhax $ ti ctx f) $
                       \x -> case x of
-                                 Pi s t -> loftE (ti ctx a) $
+                                 Pi s t -> loftE (redux $ unhax $ ti ctx a) $
                                    \r -> if r == s
                                             then Right $ replace a t
                                             else Left $ TypeMismatch e s r
