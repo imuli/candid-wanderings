@@ -1,0 +1,3 @@
+[submodule "treehash"]
+	path = treehash
+	url = https://github.com/imuli/treehash
