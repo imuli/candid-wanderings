@@ -1,0 +1,363 @@
+-- #324cd2cfdb4a0173ce4123163a4b82787911fad8924abbbc77ee21db488f6bee
+-- Singleton
+-- t
+π *
+  -- a
+  π (t)
+    (t)
+-- #3f066124a73eff59aa6020bf79467afd3727b9e5160cd957a396c67a80944657
+-- id
+-- t
+λ *
+  -- a
+  λ (t)
+    (a)
+-- #d1ff9b8d9ba8043688094f85ffdd1e33e6ae56812552d7240a78166eb8f40e88
+-- const
+-- t
+λ *
+  -- s
+  λ *
+    -- a
+    λ (t)
+      -- b
+      λ (s)
+        (a)
+-- #478e2da80e2fa88c28c1446925d41355adde9856953dfe1ac86e4036c6dd5833
+-- drop
+-- t
+λ *
+  -- a
+  λ (t)
+    (id)
+-- #1ac74d929cace46b8f9e53576e4cd4ed84d6d8fb95f7cec9df8270fb49e7bcbb
+-- flip
+-- t
+λ *
+  -- s
+  λ *
+    -- r
+    λ *
+      -- f
+      λ π (t)
+          π (s)
+            (r)
+        -- b
+        λ (s)
+          -- a
+          λ (t)
+            $ $ (f)
+                (a)
+              (b)
+-- #aadb8e9c3b0b9f966cd154bfabd83985dda135038848c2de1d73cb69a6cc1f43
+-- $
+-- t
+λ *
+  -- s
+  λ *
+    -- f
+    λ π (t)
+        (s)
+      -- a
+      λ (t)
+        $ (f)
+          (a)
+-- #a831827d3abb38b1bc5fe71a878c118808690809a203d3d0efe9a3f6d0180c32
+-- .
+-- t
+λ *
+  -- s
+  λ *
+    -- r
+    λ *
+      -- f
+      λ π (s)
+          (r)
+        -- g
+        λ π (t)
+            (s)
+          -- a
+          λ (t)
+            $ (f)
+              $ (g)
+                (a)
+-- #c2bef02174d5acfc17cde7628b19706dc766b40471e6d4cf042d54a19610cc31
+-- Boolean
+-- t
+π *
+  -- a
+  π (t)
+    -- b
+    π (t)
+      (t)
+-- #e74fdebb96035344390b54ee8b1778265557b453e20561546c0a0c184eb6b797
+-- True
+-- t
+λ *
+  -- a
+  λ (t)
+    -- b
+    λ (t)
+      (a)
+-- #b2d9eaf2c382939e538630c0af51121fdc4650594c640011cdb63aba96560aa0
+-- False
+-- t
+λ *
+  -- a
+  λ (t)
+    -- b
+    λ (t)
+      (b)
+-- #7834dfd440cc61e04a86712ecc920536e86999ab4005806241ae6a8c434f8a14
+-- not
+-- a
+λ (Boolean)
+  $ $ $ (a)
+        (Boolean)
+      (False)
+    (True)
+-- #632bde4deb9ea8ab246a94dde83fb3c22239472ed4bfae98dd3a868d55b00ced
+-- and
+-- a
+λ (Boolean)
+  -- b
+  λ (Boolean)
+    $ $ $ (a)
+          (Boolean)
+        (b)
+      (False)
+-- #18d468c2ad8458c07b4e6c7204eb4441713db1fbc80530159724d822c41e75fd
+-- or
+-- a
+λ (Boolean)
+  -- b
+  λ (Boolean)
+    $ $ $ (a)
+          (Boolean)
+        (True)
+      (b)
+-- #a84b2f482e4515985cd757892f56b48e5b73d348e3690974375917970bb417b1
+-- Maybe
+-- t
+λ *
+  -- s
+  π *
+    -- a
+    π (s)
+      -- f
+      π π (t)
+          (s)
+        (s)
+-- #c0b215c63ab6e7f36f76c48f0b9707b0c880e4cb214b0279f1df1a4238250b14
+-- Nothing
+-- t
+λ *
+  -- s
+  λ *
+    -- a
+    λ (s)
+      -- f
+      λ π (t)
+          (s)
+        (a)
+-- #b249ed68147c3986cd259618c332e9d6b71506f4c9b2a413c792b81842064512
+-- Just
+-- t
+λ *
+  -- v
+  λ (t)
+    -- s
+    λ *
+      -- a
+      λ (s)
+        -- f
+        λ π (t)
+            (s)
+          $ (f)
+            (v)
+-- #90c9265e00d25901dc0987b5f837999685266ff00cd9bc4d6511ba20e2649c3c
+-- into maybe
+-- t
+λ *
+  -- s
+  λ *
+    -- f
+    λ π (t)
+        (s)
+      -- a
+      λ (t)
+        $ $ (Just)
+            (s)
+          $ (f)
+            (a)
+-- #35f21465ad1be7d3b52d565f64849fab4619763202e1da81b0706d86cc492736
+-- map maybe
+-- t
+λ *
+  -- s
+  λ *
+    -- f
+    λ π (t)
+        (s)
+      -- v
+      λ $ (Maybe)
+          (t)
+        $ $ $ (v)
+              $ (Maybe)
+                (s)
+            $ (Nothing)
+              (s)
+          $ $ $ (into maybe)
+                (t)
+              (s)
+            (f)
+-- #645ff702774ed487ed98f1b8514b98e0c1e9a184345b1c31f51b19232a600348
+-- map maybe'
+-- t
+λ *
+  -- s
+  λ *
+    -- f
+    λ π (t)
+        (s)
+      -- v
+      λ $ (Maybe)
+          (t)
+        $ $ $ (v)
+              $ (Maybe)
+                (s)
+            $ (Nothing)
+              (s)
+          -- a
+          λ (t)
+            $ $ (Just)
+                (s)
+              $ (f)
+                (a)
+-- #32bc44f5e760b9619459b57ccf248da90d5097cbc63398373db647023b668786
+-- Pair
+-- t
+λ *
+  -- s
+  λ *
+    -- r
+    π *
+      -- f
+      π π (t)
+          π (s)
+            (r)
+        (r)
+-- #0cafbcb1e813a8b9b3a48bd6cb815d6c3d113383dfcd146b474289a88a4d6048
+-- P
+-- t
+λ *
+  -- s
+  λ *
+    -- a
+    λ (t)
+      -- b
+      λ (s)
+        -- r
+        λ *
+          -- f
+          λ π (t)
+              π (s)
+                (r)
+            $ $ (f)
+                (a)
+              (b)
+-- #d1ff9b8d9ba8043688094f85ffdd1e33e6ae56812552d7240a78166eb8f40e88
+-- fst'
+-- t
+(const)
+-- #fdd14950a870838359eca822699e3918b20fcab600aae7fff0ed76a0cbf14d98
+-- fst
+-- t
+λ *
+  -- s
+  λ *
+    -- pair
+    λ $ $ (Pair)
+          (t)
+        (s)
+      $ $ (pair)
+          (t)
+        $ $ (const)
+            (t)
+          (s)
+-- #6aeefef907a63c340a89b32a25a3779d5d00c16f3d816b06fe2a4fd32ce45faf
+-- snd'
+-- t
+λ *
+  -- s
+  λ *
+    -- a
+    λ (t)
+      -- b
+      λ (s)
+        (b)
+-- #b3999d267a32a037ef764a24d0583ec7e4d82a0aea5e6d3874fe599ff6b888ee
+-- snd
+-- t
+λ *
+  -- s
+  λ *
+    -- pair
+    λ $ $ (Pair)
+          (t)
+        (s)
+      $ $ (pair)
+          (s)
+        $ $ (snd')
+            (t)
+          (s)
+-- #90c056f4fbc2ce95d1b861c319d7f553c8b39262270a5e2aff3c6ba440f36747
+-- swap
+-- t
+λ *
+  -- s
+  λ *
+    -- pair
+    λ $ $ (Pair)
+          (t)
+        (s)
+      $ $ $ $ (P)
+              (s)
+            (t)
+          $ $ $ (snd)
+                (t)
+              (s)
+            (pair)
+        $ $ $ (fst)
+              (t)
+            (s)
+          (pair)
+-- #de0d5001221e1cc638dfdf23a9e3837fb50b498ffccd80b9b49d94e62476dc2d
+-- swap"
+-- t
+λ *
+  -- s
+  λ *
+    -- pair
+    λ π *
+        π π (t)
+            π (s)
+              2
+          1
+      -- ?a
+      λ *
+        -- ?b
+        λ π (s)
+            π (t)
+              (?a)
+          $ $ (?b)
+              $ $ (pair)
+                  (s)
+                λ (t)
+                  λ (s)
+                    0
+            $ $ (pair)
+                (t)
+              λ (t)
+                λ (s)
+                  1

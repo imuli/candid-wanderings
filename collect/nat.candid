@@ -1,0 +1,114 @@
+-- #c2bef02174d5acfc17cde7628b19706dc766b40471e6d4cf042d54a19610cc31
+-- Boolean
+-- t
+π *
+  -- a
+  π (t)
+    -- b
+    π (t)
+      (t)
+-- #e74fdebb96035344390b54ee8b1778265557b453e20561546c0a0c184eb6b797
+-- True
+-- t
+λ *
+  -- a
+  λ (t)
+    -- b
+    λ (t)
+      (a)
+-- #b2d9eaf2c382939e538630c0af51121fdc4650594c640011cdb63aba96560aa0
+-- False
+-- t
+λ *
+  -- a
+  λ (t)
+    -- b
+    λ (t)
+      (b)
+-- #7834dfd440cc61e04a86712ecc920536e86999ab4005806241ae6a8c434f8a14
+-- not
+-- a
+λ (Boolean)
+  $ $ $ (a)
+        (Boolean)
+      (False)
+    (True)
+-- #632bde4deb9ea8ab246a94dde83fb3c22239472ed4bfae98dd3a868d55b00ced
+-- and
+-- a
+λ (Boolean)
+  -- b
+  λ (Boolean)
+    $ $ $ (a)
+          (Boolean)
+        (b)
+      (False)
+-- #18d468c2ad8458c07b4e6c7204eb4441713db1fbc80530159724d822c41e75fd
+-- or
+-- a
+λ (Boolean)
+  -- b
+  λ (Boolean)
+    $ $ $ (a)
+          (Boolean)
+        (True)
+      (b)
+
+-- #186fc41d966a22e4bfda320ca95175cc3d928e4d3ab4155699bb57748cb80a9f
+-- Nat
+-- t
+π *
+  -- zero
+  π (t)
+    -- succ
+    π π (t)
+        (t)
+      (t)
+-- #1eb5d3e85239c4d6201e832d22744c6d8d689b23712201537d573ddb349cc755
+-- Zero
+-- t
+λ *
+  -- zero
+  λ (t)
+    -- succ
+    λ π (t)
+        (t)
+      (zero)
+-- #b3d16aed262f8e56374d560fa4cd87ca2e43da5dd3c14b2c015b4b9ef9d84b1a
+-- Succ
+-- prec
+λ (Nat)
+  -- t
+  λ *
+    -- zero
+    λ (t)
+      -- succ
+      λ π (t)
+          (t)
+        $ (succ)
+          $ $ $ (prec)
+                (t)
+              (zero)
+            (succ)
+-- #c8a44ce1f7442fc66814f895a6535ef7072683e3b869193376d7596d2d7f018b
+-- +
+-- n
+λ (Nat)
+  -- m
+  λ (Nat)
+    $ $ $ (n)
+          (Nat)
+        (m)
+      (Succ)
+-- #5007485ad58206ec10d594c1d3bc0f63329e5e410f5ca5e26026ecdc152bdd2a
+-- *
+-- n
+λ (Nat)
+  -- m
+  λ (Nat)
+    $ $ $ (n)
+          (Nat)
+        (Zero)
+      $ (+)
+        (m)
+
