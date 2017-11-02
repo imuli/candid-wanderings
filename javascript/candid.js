@@ -343,7 +343,7 @@ var Candid = (() => {
 	var Rec  = r.Rec  = (n) => ({ kind: 'rec', value: n });
 	var Pi   = r.Pi   = (t,b,s,S) => ({ kind: 'pi', type: t, body: b, refname: s, recname: S });
 	var Lam  = r.Lam  = (t,b,s,S) => ({ kind: 'lam', type: t, body: b, refname: s, recname: S });
-	var App  = r.App  = (f,a) => ({ kind: 'app', func: f, arg: a });
+	var App  = r.App  = (f,...as) => as.reduce((f,a) => ({ kind: 'app', func: f, arg: a }), f);
 	var Type = r.Type = (t,b) => ({ kind: 'type', type: t, body: b });
 	var Note = r.Note = (n,b) => ({ kind: 'note', note: n, body: b });
 	var Hash = r.Hash = (h) => ({ kind: 'hash', hash: hash });
