@@ -6,18 +6,19 @@ var Candid = (() => {
 
 	// absolutely minimal unambiguous "pretty" printing
 	var pretty = r.pretty = (e) => {
+		var indent = (s) => s.replace(/\n/g, '\n  ');
 		switch(e.kind){
 		case 'star': return '*';
 		case 'box': return '□';
 		case 'hole': return '_';
-		case 'note': return `{- ${e.note} -} ` + pretty(e.body);
-		case 'type': return ': ' + pretty(e.type) + ' ' + pretty(e.body);
+		case 'note': return `{- ${e.note} -}` + '\n' + pretty(e.body);
+		case 'type': return ': ' + indent(pretty(e.type)) + indent('\n' + pretty(e.body));
 		case 'hash': return toId(e.hash)
 		case 'ref': return e.value.toString();
 		case 'rec': return '@' + e.value.toString();
-		case 'app': return '$ ' + pretty(e.func) + ' ' + pretty(e.arg);
-		case 'pi': return 'π ' + pretty(e.type) + ' ' + pretty(e.body);
-		case 'lam': return 'λ ' + pretty(e.type) + ' ' + pretty(e.body);
+		case 'app': return '$ ' + indent(pretty(e.func)) + indent('\n' + pretty(e.arg));
+		case 'pi': return 'π ' + indent(pretty(e.type)) + ' ' + indent(pretty(e.body));
+		case 'lam': return 'λ ' + indent(pretty(e.type)) + indent('\n' + pretty(e.body));
 		default: throw "Type Error";
 		}
 	};
