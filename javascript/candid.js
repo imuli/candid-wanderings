@@ -52,6 +52,84 @@ var Candid = (() => {
 		}
 	};
 
+	// reduce expression
+	// reduce recursive function if r is specified
+	var reduce = r.reduce = (e,r) => {
+		// only return a new object if it would be logically different
+		var red = e;
+		switch(e.kind){
+		case 'pi':
+				var type = reduce(e.type, r);
+				var body = reduce(e.body, r);
+				if(!(eq(type, e.type) && eq(body, e.body)))
+					red = Pi(type, body);
+				break;
+		case 'lam':
+				var type = reduce(e.type, r);
+				var body = reduce(e.body, r);
+				if(!(eq(type, e.type) && eq(body, e.body)))
+					red = Lam(type, body);
+				break;
+		case 'app':
+				var func = reduce(e.func, r);
+				// reducing arguments recursively causes infinite loops
+				var arg = reduce(e.arg, false);
+				// only β-reduce when reducing recursively
+				// or there are no recurs to this lambda
+				if(func.kind == 'lam' && (r || !hasRec(func.body,0))){
+					red = reduce(replace(arg, func, func.body), r);
+				}else{
+					if(!(eq(func, e.func) && eq(arg, e.arg)))
+						red = App(func, arg);
+				}
+				break;
+		case 'note': // TODO figure out a way to
+		case 'type': //      preseve these across β-reduction
+				red = reduce(e.body,r);
+				break;
+		};
+		return red;
+	};
+
+	// replace references and recurs in an expression
+	var replace = (ref, rec, exp) => {
+		return shift(-1, over(
+			((e,c) => e.value == c ? shift(c+1,ref) : e),
+			((e,c) => e.value == c ? shift(c+1,rec) : e), 0, exp));
+	};
+
+	// shift unclosed references and recurs in an expression
+	var shift = (by, exp) => {
+		return over(
+			((e,c) => e.value >= c ? Ref(e.value+by) : e),
+			((e,c) => e.value >= c ? Rec(e.value+by) : e), 0, exp);
+	};
+
+	// helper function for shift and replace
+	var over = (ref, rec, c, e) => {
+		switch(e.kind){
+		case 'ref':  return ref(e, c);
+		case 'rec':  return rec(e, c);
+		case 'pi':   return Pi(over(ref,rec,c,e.type), over(ref,rec,c+1,e.body));
+		case 'lam':  return Lam(over(ref,rec,c,e.type), over(ref,rec,c+1,e.body));
+		case 'app':  return App(over(ref,rec,c,e.func), over(ref,rec,c,e.arg));
+		case 'note': return Note(e.note, over(ref,rec,c,e.body));
+		case 'type': return Type(over(ref,rec,c,e.type), over(ref,rec,c,e.body));
+		default: return e;
+		};
+	};
+
+	// logical / hash equivalence
+	var eq = (e0, e1) => {
+		h0 = hash(e0);
+		h1 = hash(e1);
+		if(h0 == h1) return true;
+		for(var i = 0; i < 8; i++){
+			if(h0[i] != h1[i]) return false;
+		}
+		return true;
+	}
+
 	// hash the relevant bits of an expression
 	// such that if a portion of the tree is replaced with a hash
 	// the overall hash comes out the same
