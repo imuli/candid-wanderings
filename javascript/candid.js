@@ -248,7 +248,7 @@ var Candid = (() => {
 	var _hash = (type, data) => [0,type|0,0,0, 0,0,0,data|0];
 	var hash = r.hash = (e) => {
 		// cache hashes
-		if('hash' in e) return e.hash;
+		if(e.hash !== undefined) return e.hash;
 		switch(e.kind) {
 		case 'star': e.hash = _hash(-1, 1); break;
 		case 'box': e.hash = _hash(-1, -1); break;
@@ -269,7 +269,7 @@ var Candid = (() => {
 
 	// return the depth of πs and λs this expression must be closed within
 	var closed = r.closed = (e) => {
-		if('closed' in e) return e.closed;
+		if(e.closed !== undefined) return e.closed;
 		switch(e.kind){
 		case 'star': return -1;
 		case 'box': return -1;
