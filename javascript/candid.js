@@ -119,6 +119,118 @@ var Candid = (() => {
 		};
 	};
 
+	// type check expression with parent context
+	var typecheck = r.typecheck = (e, ctx) => {
+		if(e._type !== undefined) return e._type;
+		if(ctx === undefined) ctx = [];
+		switch(e.kind) {
+		case 'star': return Box;
+		case 'box': throw { kind: 'Untyped Box', ctx: ctx};
+		case 'hole': return Hole;
+		case 'note': return typecheck(e.body, ctx);
+		case 'type': // FIXME how to detect intermediate function application?
+				var output_type = e.type;
+				for(var i = 0; i < ctx.length; i++){
+					if(ctx[i].exp.kind == 'lam'){
+						ctx[i].output_type = Pi(ctx[i].exp.type, shift(1, output_type));
+					} else {
+						throw 'FIXME - Type assertion within ' + ctx[i].exp.kind;
+					}
+					output_type = ctx[i].output_type;
+				}
+				var type = typecheck(e.body, ctx);
+				if(!ceq(type, e.type, [], []))
+					throw { kind: 'Failed Type Assertion', ctx: ctx, claim: claim, type: type };
+				e._type = e.type;
+				break;
+		case 'hash': throw "FIXME hash lookup";
+		case 'ref':
+				if(ctx.length <= e.value)
+					throw { kind: 'Open Expression', ctx: ctx, exp: e };
+				e._type = ctx[e.value].input_type;
+				break;
+		case 'rec':
+				if(ctx.length <= e.value)
+					throw { kind: 'Open Expression', ctx: ctx, exp: e };
+				var rctx = ctx[e.value];
+				if(rctx.output_type !== undefined) {
+					e._type = rctx.output_type;
+				} else if(rctx.exp.kind === 'pi') {
+					e._type = Star;
+				} else {
+					throw { kind: 'Type Inference', ctx: ctx, exp: e};
+				}
+				break;
+		case 'app':
+				var ft = typecheck(e.func, ctx);
+				if(ft.kind != 'pi'){
+					throw { kind: 'Not a Function', ctx: ctx, exp: e, ft: ft };
+				}
+				var at = typecheck(e.arg, ctx);
+				if(!ceq(at, ft.type, [], [])){
+					throw { kind: 'Type Mismatch', ctx: ctx, exp: e, at: at };
+				}
+				e._type = reduce(replace(e.arg, ft, ft.body), true);
+				break;
+		case 'pi':
+				var itt = typecheck(e.type, ctx);
+				if(itt.kind != 'star' && itt.kind != 'box')
+					throw { kind: 'Invalid Input Type', ctx: ctx, exp: e, type: itt };
+				var ott = typecheck(e.body, extend(ctx, e.type, e));
+				if(ott.kind != 'star' && ott.kind != 'box'){
+					throw { kind: 'Invalid Output Type', ctx: ctx, exp: e, type: ott };
+				}
+				e._type = ott;
+				break;
+		case 'lam':
+				typecheck(e.type, ctx);
+				var output_type = typecheck(e.body, extend(ctx, e.type, e));
+				e._type = Pi(e.type, output_type);
+				break;
+		};
+		return e._type;
+	};
+
+	// extend a type checking context
+	var extend = (ctx, type, exp) => {
+		var newctx = ctx.map((e) => ({
+			exp: e.exp,
+			input_type: shift(1, e.input_type),
+			output_type: e.output_type === undefined ? undefined : shift(1, e.output_type),
+		}));
+		newctx.unshift({
+			exp: exp,
+			input_type: shift(1, type),
+		});
+		return newctx;
+	};
+
+	// contextual equivalence
+	var ceq = (e0, e1, p0, p1) => {
+		if(e0.kind == e1.kind) switch(e0.kind){
+			case 'note': return ceq(e0.body, e1.body, p0, p1);
+			case 'type': return ceq(e0.type, e1.type, p0, p1) && ceq(e0.body, e1.body, p0, p1);
+			case 'hash': return eq(e0, e1);
+			case 'ref':
+			case 'rec': return e0.value == e1.value;
+			case 'app': return ceq(e0.func, e1.func, p0, p1) && ceq(e0.arg, e1.arg, p0, p1);
+			case 'pi':
+			case 'lam': return ceq(e0.type, e1.type, p0, p1) && ceq(e0.body, e1.body, [e0].concat(p0), [e1].concat(p1));
+			default: return true;
+		};
+		switch(e0.kind){
+			case 'note': return ceq(e0.body, e1, p0, p1);
+			case 'type': return ceq(e0.body, e1, p0, p1);
+			case 'rec': return p0.length <= e0.value ? false : ceq(p0[e0.value], e1, p0.slice(e0.value), p1);
+		};
+		switch(e1.kind){
+			case 'note': return ceq(e0, e1.body, p0, p1);
+			case 'type': return ceq(e0, e1.body, p0, p1);
+			case 'rec': return p1.length <= e1.value ? false : ceq(e0, p1[e1.value], p0, p1.slice(e1.value));
+		};
+		return false;
+	}
+
 	// logical / hash equivalence
 	var eq = (e0, e1) => {
 		h0 = hash(e0);
