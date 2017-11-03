@@ -11,7 +11,6 @@ var Candid = (() => {
 		case 'star': return '*';
 		case 'box': return '□';
 		case 'hole': return '_';
-		case 'note': return `{- ${e.note} -}` + '\n' + pretty(e.body);
 		case 'type': return ': ' + indent(pretty(e.type)) + indent('\n' + pretty(e.body));
 		case 'hash': return toId(e.hash)
 		case 'ref': return e.value.toString();
@@ -30,7 +29,6 @@ var Candid = (() => {
 		case 'star': return "(()=>$star$)";
 		case 'box': return "(()=>$box$)";
 		case 'hole': return "(()=>$hole$)";
-		case 'note': return compile(e.body, depth);
 		case 'type': return compile(e.body, depth);
 		case 'hash': return toId(e.hash);
 		case 'ref': return `v${depth - e.value}`;
@@ -84,8 +82,7 @@ var Candid = (() => {
 						red = App(func, arg);
 				}
 				break;
-		case 'note': // TODO figure out a way to
-		case 'type': //      preseve these across β-reduction
+		case 'type': // TODO preseve type assertions across β-reduction?
 				red = reduce(e.body,r);
 				break;
 		};
@@ -114,7 +111,6 @@ var Candid = (() => {
 		case 'pi':   return Pi(over(ref,rec,c,e.type), over(ref,rec,c+1,e.body));
 		case 'lam':  return Lam(over(ref,rec,c,e.type), over(ref,rec,c+1,e.body));
 		case 'app':  return App(over(ref,rec,c,e.func), over(ref,rec,c,e.arg));
-		case 'note': return Note(e.note, over(ref,rec,c,e.body));
 		case 'type': return Type(over(ref,rec,c,e.type), over(ref,rec,c,e.body));
 		default: return e;
 		};
@@ -128,7 +124,6 @@ var Candid = (() => {
 		case 'star': return Box;
 		case 'box': throw { kind: 'Untyped Box', ctx: ctx};
 		case 'hole': return Hole;
-		case 'note': return typecheck(e.body, ctx);
 		case 'type': // FIXME how to detect intermediate function application?
 				var output_type = e.type;
 				for(var i = 0; i < ctx.length; i++){
@@ -209,7 +204,6 @@ var Candid = (() => {
 	// contextual equivalence
 	var ceq = (e0, e1, p0, p1) => {
 		if(e0.kind == e1.kind) switch(e0.kind){
-			case 'note': return ceq(e0.body, e1.body, p0, p1);
 			case 'type': return ceq(e0.type, e1.type, p0, p1) && ceq(e0.body, e1.body, p0, p1);
 			case 'hash': return eq(e0, e1);
 			case 'ref':
@@ -220,12 +214,10 @@ var Candid = (() => {
 			default: return true;
 		};
 		switch(e0.kind){
-			case 'note': return ceq(e0.body, e1, p0, p1);
 			case 'type': return ceq(e0.body, e1, p0, p1);
 			case 'rec': return p0.length <= e0.value ? false : ceq(p0[e0.value], e1, p0.slice(e0.value), p1);
 		};
 		switch(e1.kind){
-			case 'note': return ceq(e0, e1.body, p0, p1);
 			case 'type': return ceq(e0, e1.body, p0, p1);
 			case 'rec': return p1.length <= e1.value ? false : ceq(e0, p1[e1.value], p0, p1.slice(e1.value));
 		};
@@ -254,7 +246,6 @@ var Candid = (() => {
 		case 'star': e.hash = _hash(-1, 1); break;
 		case 'box': e.hash = _hash(-1, -1); break;
 		case 'hole': e.hash = _hash(-1, 0); break;
-		case 'note': e.hash = hash(e.body); break;
 		case 'type': e.hash = hash(e.body); break;
 		case 'hash': e.hash = e.hash; break; // never get here anyway
 		case 'ref': e.hash = _hash(1, e.value); break;
@@ -275,7 +266,6 @@ var Candid = (() => {
 		case 'star': return -1;
 		case 'box': return -1;
 		case 'hole': return -1;
-		case 'note': return closed(e.body);
 		case 'type': e.closed = Math.max(closed(e.type), closed(e.body)); return e.closed;
 		case 'hash': return -1;
 		case 'ref': return e.value;
@@ -293,7 +283,6 @@ var Candid = (() => {
 		case 'star': return false;
 		case 'box': return false;
 		case 'hole': return false;
-		case 'note': return hasRec(e.body);
 		case 'type': return hasRec(e.type, depth) || hasRec(e.body, depth);
 		case 'hash': return false;
 		case 'ref': return false;
@@ -341,11 +330,10 @@ var Candid = (() => {
 	var Star = r.Star = ({ kind: 'star' });
 	var Ref  = r.Ref  = (n) => ({ kind: 'ref', value: n });
 	var Rec  = r.Rec  = (n) => ({ kind: 'rec', value: n });
-	var Pi   = r.Pi   = (t,b,s,S) => ({ kind: 'pi', type: t, body: b, refname: s, recname: S });
-	var Lam  = r.Lam  = (t,b,s,S) => ({ kind: 'lam', type: t, body: b, refname: s, recname: S });
+	var Pi   = r.Pi   = (t,b,s,S) => ({ kind: 'pi', type: t, body: b });
+	var Lam  = r.Lam  = (t,b,s,S) => ({ kind: 'lam', type: t, body: b });
 	var App  = r.App  = (f,...as) => as.reduce((f,a) => ({ kind: 'app', func: f, arg: a }), f);
 	var Type = r.Type = (t,b) => ({ kind: 'type', type: t, body: b });
-	var Note = r.Note = (n,b) => ({ kind: 'note', note: n, body: b });
 	var Hash = r.Hash = (h) => ({ kind: 'hash', hash: hash });
 
 	return r;
