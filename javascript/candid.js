@@ -61,13 +61,13 @@ var Candid = (() => {
 				var type = reduce(e.type, r);
 				var body = reduce(e.body, r);
 				if(!(eq(type, e.type) && eq(body, e.body)))
-					red = Pi(type, body);
+					red = Pi(type, body, argname, e.name);
 				break;
 		case 'lam':
 				var type = reduce(e.type, r);
 				var body = reduce(e.body, r);
 				if(!(eq(type, e.type) && eq(body, e.body)))
-					red = Lam(type, body);
+					red = Lam(type, body, e.argname, e.name);
 				break;
 		case 'app':
 				var func = reduce(e.func, r);
@@ -86,6 +86,7 @@ var Candid = (() => {
 				red = reduce(e.body,r);
 				break;
 		};
+		copynotes(red, e);
 		return red;
 	};
 
@@ -105,15 +106,25 @@ var Candid = (() => {
 
 	// helper function for shift and replace
 	var over = (ref, rec, c, e) => {
+		var r = e;
 		switch(e.kind){
-		case 'ref':  return ref(e, c);
-		case 'rec':  return rec(e, c);
-		case 'pi':   return Pi(over(ref,rec,c,e.type), over(ref,rec,c+1,e.body));
-		case 'lam':  return Lam(over(ref,rec,c,e.type), over(ref,rec,c+1,e.body));
-		case 'app':  return App(over(ref,rec,c,e.func), over(ref,rec,c,e.arg));
-		case 'type': return Type(over(ref,rec,c,e.type), over(ref,rec,c,e.body));
-		default: return e;
+		case 'ref':  r = ref(e, c); break;
+		case 'rec':  r = rec(e, c); break;
+		case 'pi':   r = Pi(over(ref,rec,c,e.type), over(ref,rec,c+1,e.body), e.argname, e.name); break;
+		case 'lam':  r = Lam(over(ref,rec,c,e.type), over(ref,rec,c+1,e.body), e.argname, e.name); break;
+		case 'app':  r = App(over(ref,rec,c,e.func), over(ref,rec,c,e.arg)); break;
+		case 'type': r = Type(over(ref,rec,c,e.type), over(ref,rec,c,e.body)); break;
 		};
+		copynotes(r, e);
+		return r;
+	};
+
+	// copy notes from e to r (usually it's replacement)
+	// like r.note = e.note, but better
+	var copynotes = (r,e) => {
+		if(r == Star || r == Box || r == Hole) return; // constants don't get notes
+		if(r.note == e.note) return;
+		r.note = r.note === undefined ? e.note : e.note === undefined ? r.note : e.note + '\n' + r.note;
 	};
 
 	// type check expression with parent context
@@ -181,7 +192,7 @@ var Candid = (() => {
 		case 'lam':
 				typecheck(e.type, ctx);
 				var output_type = typecheck(e.body, extend(ctx, e.type, e));
-				e._type = Pi(e.type, output_type);
+				e._type = Pi(e.type, output_type, e.argname, undefined); // can't derive a name for the overall pi
 				break;
 		};
 		return e._type;
@@ -325,16 +336,20 @@ var Candid = (() => {
 		return s;
 	};
 
+	// helper functions (and objects) for building expressions.
+	// these are not the only way to build expressions!
+	// and do not perscribe which values may take which arguments
+	// in particular, all values will eventually have `hash` may have a `note`
 	var Box  = r.Box  = ({ kind: 'box' });
 	var Hole = r.Hole = ({ kind: 'hole' });
 	var Star = r.Star = ({ kind: 'star' });
 	var Ref  = r.Ref  = (n) => ({ kind: 'ref', value: n });
 	var Rec  = r.Rec  = (n) => ({ kind: 'rec', value: n });
-	var Pi   = r.Pi   = (t,b,s,S) => ({ kind: 'pi', type: t, body: b });
-	var Lam  = r.Lam  = (t,b,s,S) => ({ kind: 'lam', type: t, body: b });
+	var Pi   = r.Pi   = (t,b,an,n) => ({ kind: 'pi', type: t, body: b, argname: an, name: n});
+	var Lam  = r.Lam  = (t,b,an,n) => ({ kind: 'lam', type: t, body: b, argname: an, name: n });
 	var App  = r.App  = (f,...as) => as.reduce((f,a) => ({ kind: 'app', func: f, arg: a }), f);
-	var Type = r.Type = (t,b) => ({ kind: 'type', type: t, body: b });
-	var Hash = r.Hash = (h) => ({ kind: 'hash', hash: hash });
+	var Type = r.Type = (t,b,n) => ({ kind: 'type', type: t, body: b, note: n });
+	var Hash = r.Hash = (h) => ({ kind: 'hash', hash: hash, name: n });
 
 	return r;
 })();
