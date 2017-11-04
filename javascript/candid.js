@@ -388,6 +388,94 @@ var Candid = (() => {
 		return entry;
 	};
 
+	// render to compact UTF16 format
+	// suitable for use with localStorage
+	var toUTF16 = r.toUTF16 = (e) => {
+		switch(e.kind){
+		case 'star': return '*';
+		case 'box':  return '□';
+		case 'hole': return '_';
+		case 'type': return ':' + toUTF16(e.type) + toUTF16(e.body);
+		case 'hash': return '#' + hashToUTF16(e.hash)
+		case 'ref':  return '!' + natToUTF16(e.value);
+		case 'rec':  return '@' + natToUTF16(e.value);
+		case 'app':  return '$' + toUTF16(e.func) + toUTF16(e.arg);
+		case 'pi':   return 'π' + toUTF16(e.type) + toUTF16(e.body);
+		case 'lam':  return 'λ' + toUTF16(e.type) + toUTF16(e.body);
+		default: throw "Type Error";
+		};
+	};
+
+	// parse an expression from the format above
+	var fromUTF16 = r.fromUTF16 = (s, st) => {
+		if(st === undefined) st = {offset: 0};
+		var c = s[st.offset];
+		st.offset++;
+		switch(c){
+		case '*': return Star;
+		case '□': return Box;
+		case '_': return Hole;
+		case ':': return Type(fromUTF16(s,st), fromUTF16(s,st));
+		case '#': return Hash(hashFromUTF16(s, st));
+		case '!': return Ref(natFromUTF16(s, st));
+		case '@': return Rec(natFromUTF16(s, st));
+		case '$': return App(fromUTF16(s,st),fromUTF16(s,st));
+		case 'π': return Pi(fromUTF16(s,st),fromUTF16(s,st));
+		case 'λ': return Lam(fromUTF16(s,st),fromUTF16(s,st));
+		default: throw s + "\nParse Error at " + st.offset + " recieved " + c;
+		};
+	};
+
+	// convert u32 to 0..4 unicode points [0x200,0x2ff]
+	var natToUTF16 = (n) => {
+		var a = [];
+		while(n > 0){
+			a.push(n & 0xff | 0x200);
+			n = n >> 8;
+		}
+		return String.fromCharCode(...a);
+	}
+
+	// parse u32 from 0..4 unicode points [0x200,0x2ff]
+	var natFromUTF16 = (s, st) => {
+		var n = 0;
+		s = s.substr(st.offset);
+		var i;
+		for(i = 0; i < 4 && (c = s.charCodeAt(i)) && (0x200 <= c) && (c <= 0x2ff); i++){
+			n |= (c & 0xff) << (8*i);
+		}
+		st.offset += i;
+		return n;
+	}
+
+	// render hash as unicode points [0x100,0x1ff]
+	var hashToUTF16 = (h) => {
+		var a = [];
+		for(var i = 0; i < 8; i++){
+			for(var j = 0; j < 4; j++){
+				a.push((h[i] >>> (8*j)) & 0xff | 0x100);
+			}
+		}
+		return String.fromCharCode(...a);
+	};
+
+	// parse hash from unicode points [0x100,0x1ff]
+	var hashFromUTF16 = (_s, st) => {
+		var s = _s.substr(st.offset);
+		var h = [];
+		for(var i = 0; i < 8; i++){
+			var x = 0;
+			for(var j = 0; j < 4; j++){
+				var c = s.charCodeAt(4*i+j);
+				if(c < 0x100 || 0x1ff < c) throw _s + "\nParse error at 7, recieved " + c;
+				x |= (s.charCodeAt(4*i+j) & 0xff) << (8*j);
+			}
+			h.push(x);
+		}
+		st.offset += 32;
+		return h;
+	};
+
 	// render hash as an ascii javascript identifier
 	var toId = function(a) {
 		if(!a) a = this;
