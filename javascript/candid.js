@@ -228,10 +228,12 @@ var Candid = (() => {
 			default: return true;
 		};
 		switch(e0.kind){
+			case 'hash': return ceq(unwrap(e0), e1, p0, p1);
 			case 'type': return ceq(e0.body, e1, p0, p1);
 			case 'rec': return p0.length <= e0.value ? false : ceq(p0[e0.value], e1, p0.slice(e0.value), p1);
 		};
 		switch(e1.kind){
+			case 'hash': return ceq(e0, unwrap(e1), p0, p1);
 			case 'type': return ceq(e0, e1.body, p0, p1);
 			case 'rec': return p1.length <= e1.value ? false : ceq(e0, p1[e1.value], p0, p1.slice(e1.value));
 		};
@@ -327,13 +329,13 @@ var Candid = (() => {
 		case 'type':
 				var type = store(e.type);
 				var body = store(e.body);
-				if(!(eq(type,e.type) && eq(body, e.body)))
+				if(type != e.type || body != e.body)
 					e = Type(type, body, e.note);
 				return e;
 		case 'app':
 				var func = store(e.func);
 				var arg = store(e.arg);
-				if(!(eq(func,e.func) && eq(arg, e.arg)))
+				if(func != e.func || arg != e.arg)
 					e = copynotes(App(func, arg), e);
 				if(func.kind != 'hash' || arg.kind != 'hash')
 					return e;
@@ -341,7 +343,7 @@ var Candid = (() => {
 		case 'pi':
 				var type = store(e.type);
 				var body = store(e.body);
-				if(!(eq(type,e.type) && eq(body, e.body)))
+				if(type != e.type || body != e.body)
 					e = copynotes(Pi(type, body, e.argname, e.name), e);
 				if(closed(type) >= 0 || closed(body) >= 1)
 					return e;
@@ -349,7 +351,7 @@ var Candid = (() => {
 		case 'lam':
 				var type = store(e.type);
 				var body = store(e.body);
-				if(!(eq(type,e.type) && eq(body, e.body)))
+				if(type != e.type || body != e.body)
 					e = copynotes(Lam(type, body, e.argname, e.name), e);
 				if(closed(type) >= 0 || closed(body) >= 1)
 					return e;
