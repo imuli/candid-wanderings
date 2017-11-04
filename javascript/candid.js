@@ -122,9 +122,10 @@ var Candid = (() => {
 	// copy notes from e to r (usually it's replacement)
 	// like r.note = e.note, but better
 	var copynotes = (r,e) => {
-		if(r == Star || r == Box || r == Hole) return; // constants don't get notes
-		if(r.note == e.note) return;
+		if(r == Star || r == Box || r == Hole) return r; // constants don't get notes
+		if(r.note == e.note) return r;
 		r.note = r.note === undefined ? e.note : e.note === undefined ? r.note : e.note + '\n' + r.note;
+		return r;
 	};
 
 	// type check expression with parent context
@@ -150,7 +151,9 @@ var Candid = (() => {
 					throw { kind: 'Failed Type Assertion', ctx: ctx, claim: claim, type: type };
 				e._type = e.type;
 				break;
-		case 'hash': throw "FIXME hash lookup";
+		case 'hash':
+				e._type = unwrap(fetch(e.hash, true).type);
+				break;
 		case 'ref':
 				if(ctx.length <= e.value)
 					throw { kind: 'Open Expression', ctx: ctx, exp: e };
@@ -169,7 +172,7 @@ var Candid = (() => {
 				}
 				break;
 		case 'app':
-				var ft = typecheck(e.func, ctx);
+				var ft = unwrap(typecheck(e.func, ctx));
 				if(ft.kind != 'pi'){
 					throw { kind: 'Not a Function', ctx: ctx, exp: e, ft: ft };
 				}
@@ -305,6 +308,84 @@ var Candid = (() => {
 		}
 	};
 
+	// expr, type, etc, of closed, fully hashed expressions
+	// indexed by hash.
+	var _store = {};
+
+	// save all closed non-trivial sub-expressions to the store
+	// this requires type-checking them,
+	// and will throw a type error instead of saving ill-typed expressions.
+	// returns any wrapping unclosed expression or a hash.
+	var store = r.store = (e) => {
+		switch(e.kind){
+		case 'star':
+		case 'hash':
+		case 'ref':
+		case 'rec': return e;
+		case 'box':
+		case 'hole': throw 'Attempted to store ' + e.kind + '.';
+		case 'type':
+				var type = store(e.type);
+				var body = store(e.body);
+				if(!(eq(type,e.type) && eq(body, e.body)))
+					e = Type(type, body, e.note);
+				return e;
+		case 'app':
+				var func = store(e.func);
+				var arg = store(e.arg);
+				if(!(eq(func,e.func) && eq(arg, e.arg)))
+					e = copynotes(App(func, arg), e);
+				if(func.kind != 'hash' || arg.kind != 'hash')
+					return e;
+				break;
+		case 'pi':
+				var type = store(e.type);
+				var body = store(e.body);
+				if(!(eq(type,e.type) && eq(body, e.body)))
+					e = copynotes(Pi(type, body, e.argname, e.name), e);
+				if(closed(type) >= 0 || closed(body) >= 1)
+					return e;
+				break;
+		case 'lam':
+				var type = store(e.type);
+				var body = store(e.body);
+				if(!(eq(type,e.type) && eq(body, e.body)))
+					e = copynotes(Lam(type, body, e.argname, e.name), e);
+				if(closed(type) >= 0 || closed(body) >= 1)
+					return e;
+				break;
+		};
+		// now that we've reached here, we know:
+		// * this expression is closed
+		// * it's either an app, pi, or lam
+		var type = typecheck(e);
+		// * it's type checked
+		var h = hash(e);
+		var key = toId(h);
+		// so we can safely insert it into our store
+		if(_store[key] === undefined){
+			_store[key] = {
+				expr: e,
+				type: type,
+				hash: h,
+			};
+		}
+		var s = Hash(h, e.name);
+		s._type = type;
+		return s;
+	};
+
+	// lookup e in the store, if it's a hash
+	var unwrap = r.unwrap = (e) => e.kind == 'hash' ? fetch(e.hash, true).expr : e;
+	// fetch an entry for an expression (assert success if required
+	var fetch = r.fetch = (h, assert) => {
+		var id = toId(h);
+		var entry = _store[id];
+		if(assert && entry === undefined)
+			throw id + ' not found in store.';
+		return entry;
+	};
+
 	// render hash as an ascii javascript identifier
 	var toId = function(a) {
 		if(!a) a = this;
@@ -349,7 +430,7 @@ var Candid = (() => {
 	var Lam  = r.Lam  = (t,b,an,n) => ({ kind: 'lam', type: t, body: b, argname: an, name: n });
 	var App  = r.App  = (f,...as) => as.reduce((f,a) => ({ kind: 'app', func: f, arg: a }), f);
 	var Type = r.Type = (t,b,n) => ({ kind: 'type', type: t, body: b, note: n });
-	var Hash = r.Hash = (h) => ({ kind: 'hash', hash: hash, name: n });
+	var Hash = r.Hash = (h,n) => ({ kind: 'hash', hash: h, name: n });
 
 	return r;
 })();
