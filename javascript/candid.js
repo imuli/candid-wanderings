@@ -363,18 +363,39 @@ var Candid = (() => {
 		// * it's type checked
 		var h = hash(e);
 		var key = hashToUTF16(h);
+		var u = uses(e);
 		// so we can safely insert it into our store
 		if(_store[key] === undefined){
 			_store[key] = {
 				expr: e,
 				type: type,
 				hash: h,
+				uses: u,
 			};
 		}
 		var s = Hash(h, e.name);
 		s._type = type;
 		return s;
 	};
+
+	// count the uses of other closed expressions
+	var uses = r.uses = (e, u) => {
+		if(u === undefined) u = {};
+		switch(e.kind){
+		case 'hash':
+				var h = hashToUTF16(e.hash);
+				u[h]=u[h] === undefined ? 1 : u[h] + 1;
+				var use = fetch(e.hash, true).use;
+				for(var h in use)
+					u[h] = u[h] === undefined ? use[h] : u[h] + use[h];
+				return u;
+		case 'app':  return uses(e.func, uses(e.arg, u));
+		case 'type':
+		case 'pi':
+		case 'lam':  return uses(e.type, uses(e.body, u));
+		default: return u;
+		}
+	}
 
 	// lookup e in the store, if it's a hash
 	var unwrap = r.unwrap = (e) => e.kind == 'hash' ? fetch(e.hash, true).expr : e;
