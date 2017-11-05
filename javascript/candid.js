@@ -271,7 +271,6 @@ var Candid = (() => {
 		case 'lam': e.hash = blake2s1.hash(hash(e.type).concat(hash(e.body)),[0,0,0,2],[]); break;
 		default: throw "Type Error";
 		}
-		e.hash.toString = toId;
 		return e.hash;
 	};
 
@@ -312,7 +311,7 @@ var Candid = (() => {
 
 	// expr, type, etc, of closed, fully hashed expressions
 	// indexed by hash.
-	var _store = {};
+	var _store = r._store = {};
 
 	// save all closed non-trivial sub-expressions to the store
 	// this requires type-checking them,
@@ -363,7 +362,7 @@ var Candid = (() => {
 		var type = typecheck(e);
 		// * it's type checked
 		var h = hash(e);
-		var key = toId(h);
+		var key = hashToUTF16(h);
 		// so we can safely insert it into our store
 		if(_store[key] === undefined){
 			_store[key] = {
@@ -381,12 +380,58 @@ var Candid = (() => {
 	var unwrap = r.unwrap = (e) => e.kind == 'hash' ? fetch(e.hash, true).expr : e;
 	// fetch an entry for an expression (assert success if required
 	var fetch = r.fetch = (h, assert) => {
-		var id = toId(h);
+		var id = hashToUTF16(h);
 		var entry = _store[id];
 		if(assert && entry === undefined)
 			throw id + ' not found in store.';
 		return entry;
 	};
+
+	var _db = r._db = undefined;
+
+	// open the database
+	var open = r.open = () => new Promise((resolve, reject) => {
+		var req = window.indexedDB.open("candid", 1);
+		req.onerror = (event) => reject(req, event.target.errorCode);
+		req.onupgradeneeded = (event) => {
+			var db = event.target.result;
+			var expr_store = db.createObjectStore("expr", { keyPath: "hash" });
+		};
+		req.onsuccess = (event) => resolve(req, event);
+	}).then((req) => {
+		_db = req.result;
+	});
+
+	// save to the database
+	var save = r.save = () => new Promise((resolve, reject) => {
+		if(_db === undefined) return open().then(load);
+		var es = _db.transaction(["expr"], "readwrite").objectStore("expr");
+		var i = 0, keys = Object.keys(_store);
+		var go = () => {
+			if(i >= keys.length) return resolve();
+			var p = es.put(_store[keys[i]]);
+			i++;
+			p.onsuccess = go;
+			p.onerror = reject;
+		};
+		return go();
+	});
+
+	// load from the database
+	var load = r.load = () => new Promise((resolve, reject) => {
+		if(_db === undefined) return open().then(load);
+		var es = _db.transaction(["expr"]).objectStore("expr");
+		var req = es.getAll();
+		req.onsuccess = () => {
+			var exprs = req.result;
+			console.log(exprs);
+			for(var i in exprs) {
+				_store[hashToUTF16(exprs[i].hash)] = exprs[i];
+			}
+			resolve();
+		}
+		req.onerror = reject;
+	});
 
 	// render to compact UTF16 format
 	// suitable for use with localStorage
