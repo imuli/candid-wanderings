@@ -79,7 +79,7 @@ var Candid = (() => {
 					red = reduce(replace(arg, func, func.body), r);
 				}else{
 					if(!(eq(func, e.func) && eq(arg, e.arg)))
-						red = App(func, arg);
+						red = App(func, arg, e.name);
 				}
 				break;
 		case 'type': // TODO preseve type assertions across β-reduction?
@@ -112,7 +112,7 @@ var Candid = (() => {
 		case 'rec':  r = rec(e, c); break;
 		case 'pi':   r = Pi(over(ref,rec,c,e.type), over(ref,rec,c+1,e.body), e.argname, e.name); break;
 		case 'lam':  r = Lam(over(ref,rec,c,e.type), over(ref,rec,c+1,e.body), e.argname, e.name); break;
-		case 'app':  r = App(over(ref,rec,c,e.func), over(ref,rec,c,e.arg)); break;
+		case 'app':  r = App(over(ref,rec,c,e.func), over(ref,rec,c,e.arg), e.name); break;
 		case 'type': r = Type(over(ref,rec,c,e.type), over(ref,rec,c,e.body)); break;
 		};
 		copynotes(r, e);
@@ -335,7 +335,7 @@ var Candid = (() => {
 				var func = store(e.func);
 				var arg = store(e.arg);
 				if(func != e.func || arg != e.arg)
-					e = copynotes(App(func, arg), e);
+					e = copynotes(App(func, arg, e.name), e);
 				if(func.kind != 'hash' || arg.kind != 'hash')
 					return e;
 				break;
@@ -584,7 +584,8 @@ var Candid = (() => {
 	var Rec  = r.Rec  = (n) => ({ kind: 'rec', value: n });
 	var Pi   = r.Pi   = (t,b,an,n) => ({ kind: 'pi', type: t, body: b, argname: an, name: n});
 	var Lam  = r.Lam  = (t,b,an,n) => ({ kind: 'lam', type: t, body: b, argname: an, name: n });
-	var App  = r.App  = (f,...as) => as.reduce((f,a) => ({ kind: 'app', func: f, arg: a }), f);
+	var App  = r.App  = (f,a,n) => ({ kind: 'app', func: f, arg: a, name: n });
+	var Apps = r.Apps = (f,...as) => as.reduce((f,a) => ({ kind: 'app', func: f, arg: a }), f);
 	var Type = r.Type = (t,b,n) => ({ kind: 'type', type: t, body: b, note: n });
 	var Hash = r.Hash = (h,n) => ({ kind: 'hash', hash: h, name: n });
 
