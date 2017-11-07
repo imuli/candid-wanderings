@@ -52,8 +52,8 @@ var viewExpr = ({expr, ctx, paren}) => {
 	case 'box': return view('□');
 	case 'hole': return view('_');
 	case 'hash':
-			var n = expr.name;
-			return view(n === undefined ? Candid.toId(expr.hash) : n);
+			// we don't have a name, so unwrap it and show the contents
+			return viewExpr({expr: Candid.unwrap(expr), ctx: ctx,paren: paren});
 	case 'ref':
 			var n = ctx[expr.value].argname;
 			return view(n === undefined ? expr.value : n, colorExpr(expr._type, ctx));

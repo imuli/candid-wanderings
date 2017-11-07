@@ -368,12 +368,13 @@ var Candid = (() => {
 		if(_store[key] === undefined){
 			_store[key] = {
 				expr: e,
+				name: e.name,
 				type: type,
 				hash: h,
 				uses: u,
 			};
 		}
-		var s = Hash(h, e.name);
+		var s = Hash(h, _store[key].name);
 		s._type = type;
 		return s;
 	};
