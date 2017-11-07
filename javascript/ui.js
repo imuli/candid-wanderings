@@ -53,7 +53,7 @@ var viewExpr = ({expr, ctx, paren}) => {
 	case 'hole': return view('_');
 	case 'hash':
 			var n = expr.name;
-			return view(n === undefined ? toId(expr.hash) : n);
+			return view(n === undefined ? Candid.toId(expr.hash) : n);
 	case 'ref':
 			var n = ctx[expr.value].argname;
 			return view(n === undefined ? expr.value : n, colorExpr(expr._type, ctx));

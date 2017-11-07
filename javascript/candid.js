@@ -543,7 +543,7 @@ var Candid = (() => {
 	};
 
 	// render hash as an ascii javascript identifier
-	var toId = function(a) {
+	var toId = r.toId = function(a) {
 		if(!a) a = this;
 		var b = [
 			'a','b','c','d','e','f','g','h',
