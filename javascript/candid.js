@@ -254,18 +254,18 @@ var Candid = (() => {
 	// hash the relevant bits of an expression
 	// such that if a portion of the tree is replaced with a hash
 	// the overall hash comes out the same
-	var _hash = (type, data) => [0,type|0,0,0, 0,0,0,data|0];
+	var zero = [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
 	var hash = r.hash = (e) => {
 		// cache hashes
 		if(e.hash !== undefined) return e.hash;
 		switch(e.kind) {
-		case 'star': e.hash = _hash(-1, 1); break;
-		case 'box': e.hash = _hash(-1, -1); break;
-		case 'hole': e.hash = _hash(-1, 0); break;
-		case 'type': e.hash = hash(e.body); break;
+		case 'star': e.hash = blake2s1.hash(zero, [-1,0,0,1],[]); break;
+		case 'box': e.hash = blake2s1.hash(zero, [-1,0,0,-1],[]); break;
+		case 'hole': e.hash = blake2s1.hash(zero, [-1,0,0,0],[]); break;
+		case 'type': e.hash = hash(e.body); break; // FIXME _can_ this change the expression?
 		case 'hash': e.hash = e.hash; break; // never get here anyway
-		case 'ref': e.hash = _hash(1, e.value); break;
-		case 'rec': e.hash = _hash(2, e.value); break;
+		case 'ref': e.hash = blake2s1.hash(zero, [1,0,0,e.value],[]); break; // TODO? these two
+		case 'rec': e.hash = blake2s1.hash(zero, [2,0,0,e.value],[]); break; // could be cached
 		case 'app': e.hash = blake2s1.hash(hash(e.func).concat(hash(e.arg)),[0,0,0,1],[]); break;
 		case 'pi': e.hash = blake2s1.hash(hash(e.type).concat(hash(e.body)),[0,0,0,3],[]); break;
 		case 'lam': e.hash = blake2s1.hash(hash(e.type).concat(hash(e.body)),[0,0,0,2],[]); break;
