@@ -45,14 +45,13 @@ var viewExpr = ({expr, ctx, paren}) => {
 	var p = paren ? (x) => E('span', {className:'candid-paren'}, '(', x, ')') : (x) => x;
 	if(Candid.closed(expr) < 0)
 		ctx = [];
-	if(expr.name !== undefined && !expr.expand)
-		return view(expr.name, colorExpr(expr._type, ctx));
 	switch(expr.kind){
 	case 'star': return view('*');
 	case 'box': return view('□');
 	case 'hole': return view('_');
 	case 'hash':
-			// we don't have a name, so unwrap it and show the contents
+			if(expr.name !== undefined)
+				return view(expr.name, colorExpr(expr._type, ctx));
 			return viewExpr({expr: Candid.unwrap(expr), ctx: ctx,paren: paren});
 	case 'ref':
 			var n = ctx[expr.value].argname;
