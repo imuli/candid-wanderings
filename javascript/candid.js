@@ -309,6 +309,34 @@ var Candid = (() => {
 		}
 	};
 
+	// deep clone an expression
+	// discarding cached types, etc.
+	var clone = r.clone = (expr) => {
+		var e = {};
+		for(var a in expr){
+			if(a[0] == '_') continue;
+			if(typeof expr[a] == 'object' && expr[a].kind !== undefined) {
+				e[a] = clone(expr[a]);
+			} else {
+				e[a] = expr[a];
+			}
+		}
+		return e;
+	}
+
+	// destructively replace a subexpression identified by `path` with `repl`
+	var _update = (expr, path, repl) => {
+		// at the end of the path, replace
+		if(path.length == 0) return repl;
+		expr[path[0]] = _update(expr[path[0]], path.slice(1), repl);
+		delete(expr.closed)
+		return expr;
+	}
+
+	// replace a subexpression identified by `path` with `repl`
+	var update = r.update = (expr, path, repl) =>
+		_update(clone(expr), path, repl);
+
 	// expr, type, etc, of closed, fully hashed expressions
 	// indexed by hash.
 	var _store = r._store = {};
