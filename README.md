@@ -61,66 +61,151 @@ language makes.
 
 ### The Calculus
 
-One might represent Candid's instances of inner calculus something like this:
+One might represent Candid's (and Morte's) inner calculus something like this:
 
-```
-Unit    = π * ⇒ π 0 ⇒ 1
-```
-
-Where `Unit` is the type of functions that take any type `*`, take a any value
-of that type (numbers count back across $n+1$ arrows, so `0` refers back to the
-first `π`), and return a value of that type.
-
-```
-id      = λ * ⇒ λ 0 ⇒ 0
+```idris
+data Expr
+  = Lam (inType : Expr) (body : Expr)    -- inType → body
+  | Ref (n : Nat)                        -- n
+  | App (func : Expr) (arg : Expr)       -- func arg
+  | Pi (inType : Expr) (outType : Expr)  -- inType ⇒ outType
+  | Star                                 -- *
+  | Box                                  -- □
 ```
 
-Likewise `id` is the only function inhabiting that type, it's the identity
-function, returning the value that it recieved.
+* `Lam` encloses a function, apply an argument (type `inType`)
+  and it returns `body` with references to it replaced by that argument.
+
+* `Ref` refers back `n` arrows, to a `Lam` or a `Pi`,
+  to take the place of an argument on function application.
+
+* `App` applies the argument `arg` to the function `func`.
+
+* `Pi` is the type of `Lam`, where `inType`s match
+  and `outType` is the derived type of the `body`.
+
+* `Star` is the type of a `Pi`.
+
+* `Box` is the type of a `Star`.
+
+With these one may define functions:
 
 ```
-Boolean = π * ⇒ π 0 ⇒ π 1 ⇒ 2
-true    = λ * ⇒ λ 0 ⇒ λ 1 ⇒ 1
-false   = λ * ⇒ λ 0 ⇒ λ 1 ⇒ 0
+id      = * → 0 → 0
 ```
 
-`Boolean` has exactly two inhabitants, `true` and `false`, which one is which
-is purely arbitrary, but, for our purposes, `true` returns the first value and
-`false` returns the second, and so:
+`id` is the simplest function, it simply returns it's argument. However, as
+every `Lam` requires a input type, it takes an additional argument first that
+specifies the type. Candid replaces polymorphism with specialization. Notice
+also how the two `0`s refer to different arguments, the first one refers the
+first argument (which is a type) and the second to the second (which is a value
+of that type).
 
 ```
-or     = λ Boolean ⇒ λ Boolean ⇒ 1 Boolean true 0
-and    = λ Boolean ⇒ λ Boolean ⇒ 1 Boolean 0 false
+Unit    = * ⇒ 0 ⇒ 1
 ```
 
-That is, `or` takes two booleans and gives `Boolean`, `true`, and the second
-value to the first. If the first is `true` it will return `true`, if it is
-`false` it will return the second value. Type checking simply consists of
-making sure every `λ` and `π` have a `π` or `*` (or reference to one) as their
-type, and that every instance of function application gives an argument of the
-correct type.
+`Unit` is the type of `id`, so named because `id` is the only one function of
+that type. Here both `0` and `1` refer to the first argument, the type of the
+value given to and returned by `id`.
 
-Note that there are no argument names, just numbers, the names in the above
-examples are merely for show, `Boolean` simply means `(π * ⇒ π 0 ⇒ π 1 ⇒ 2)`.
+```
+Boolean = * ⇒ 0 ⇒ 1 ⇒ 2
+True    = * → 0 → 1 → 1
+False   = * → 0 → 1 ⇒ 0
+```
+
+`Boolean` has exactly two inhabitants, `True` and `False`, which one is which
+is purely arbitrary, but, for our purposes, `True` returns the first value and
+`False` returns the second, and thus function application:
+
+```
+or     = Boolean → Boolean → 1 Boolean True 0
+and    = Boolean → Boolean → 1 Boolean 0 False
+```
+
+`or` takes two `Boolean`s uses the first one to choose between `True` and the
+second. Sugaring this to something more familiar:
+
+```idris
+or : Bool -> Bool -> Bool
+or a b = case a of
+              True -> True
+              False -> b
+```
+
+`and` could be sugared in exactly the same way.
+
+Both are of the type `Boolean ⇒ Boolean ⇒ Boolean`. Note that above we don't
+make any allowances to refer to things by name in the data structure up above.
+`Boolean` here is just a placeholder for `* ⇒ 0 ⇒ 1 ⇒ 2`.
 
 For more examples of what you can do with this sort of minimal calculus of
 constructions, albeit with names instead of numbers, see the Morte
 [Tutorial](https://hackage.haskell.org/package/morte/docs/Morte-Tutorial.html).
 
-There is also a recursion primitive, which acts much like the references, it
-points back across $n+1$ arrows to a `π` or `λ`. Except, instead of referencing
-the argument, it represents a copy of the whole expression, so during function
-application when a `λ` is removed, a recur would be replaced with that `λ`.
-This allows non-total functions in the form of infinite recursion, but also
-allows the implementation of Candid in itself, while still eliminating dynamic
-type errors.
+#### Hashes
 
-Additionally, a hash expression stands in for an sub-expression that doesn't
-reference or recur it's parent expressions, known as a closed expression. It is
-[very likely](https://en.wikipedia.org/wiki/Birthday_attack#Mathematics) a
-unique identifier, computed from the content of the expression it represents.
-When an expression is stored, all closed sub-expressions are represented with
-hashes.
+```idris
+  | Hash (hash : Vect 8 Bits32)
+```
+
+This is the first thing (other using natural number indices rather than names)
+that differentiates Candid from Morte. `Boolean` can also be represented by the
+256-bit hash `941ad446211f88e385d2b95be6336328b1708e77a11dca3e783a240d9dfadca5`.
+Hashes replace well-typed closed sub-expressions, and indeed, introduce no
+semantic differences what-so-ever, but are like a provable form of Morte's URL
+references. Hashes are the basis of Candid "source code" as a pure immutable
+data structure, a directed acyclic graph (albeit representing a cyclic one).
+
+With just the above `Expr` type, we can only represent total functions, and only
+total functions at that. This is by design, and is very helpful in writing
+correct code. However, this also means we can't implement Candid in Candid.
+
+#### Recursion
+
+```idris
+  | Rec (n : Nat)                        -- @n
+  | Type (outType : Expr) (body : Expr)  -- outType | body
+```
+
+So we get primitive recursion. `Rec` is a lot like `Ref`, but instead of being
+replaced with the argument, it is replaced with the function. `Type` is here to
+assist the type checker, so it can calculate the output types of a `Rec`.
+
+```
+Nat = * ⇒ 0 ⇒ (@1 ⇒ 2) ⇒ 2
+Zero = * → 0 → (Nat ⇒ 2) → 1
+Succ = Nat → * → 0 → (Nat ⇒ 2) → 0 3
+add = Nat → Nat → Nat | 0 Nat 1 (@1 (Succ 1))
+```
+
+This is the recursive version of Nat, which sugars to:
+
+```idris
+data Nat = Zero | Succ Nat
+add : Nat -> Nat -> Nat
+add n m = case m of
+               Zero -> n
+               Succ p -> add (Succ n) p
+```
+
+Now all (or nearly all) the interesting things to do with `Nat`s can be done
+without this sort of recursion using `Nat = * ⇒ 0 ⇒ (1 ⇒ 2) ⇒ 2` on which
+operations are provably total by dint of type checking. So consider...
+
+```
+Expr = * ⇒
+       0 ⇒
+       1 ⇒
+       (Nat ⇒ 3) ⇒
+       (Nat ⇒ 4) ⇒
+       (@4 ⇒ @5 ⇒ 6) ⇒
+       (@5 ⇒ @6 ⇒ 7) ⇒
+       (@6 ⇒ @7 ⇒ 8) ⇒
+       (@7 ⇒ @8 ⇒ 9) ⇒
+       8
+```
 
 ### Editor
 
