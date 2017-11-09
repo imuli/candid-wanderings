@@ -122,7 +122,7 @@ var Candid = (() => {
 	// copy notes from e to r (usually it's replacement)
 	// like r.note = e.note, but better
 	var copynotes = (r,e) => {
-		if(r == Star || r == Box || r == Hole) return r; // constants don't get notes
+		if(r == Star || r == Box || r.kind == 'hole') return r; // constants don't get notes
 		if(r.note == e.note) return r;
 		r.note = r.note === undefined ? e.note : e.note === undefined ? r.note : e.note + '\n' + r.note;
 		return r;
@@ -135,7 +135,7 @@ var Candid = (() => {
 		switch(e.kind) {
 		case 'star': return Box;
 		case 'box': throw { kind: 'Untyped Box', ctx: ctx};
-		case 'hole': return Hole;
+		case 'hole': return e;
 		case 'type': // FIXME how to detect intermediate function application?
 				var output_type = e.type;
 				for(var i = 0; i < ctx.length; i++){
@@ -509,7 +509,7 @@ var Candid = (() => {
 		switch(c){
 		case '*': return Star;
 		case '□': return Box;
-		case '_': return Hole;
+		case '_': return Hole();
 		case ':': return Type(fromUTF16(s,st), fromUTF16(s,st));
 		case '#': return Hash(hashFromUTF16(s, st));
 		case '!': return Ref(natFromUTF16(s, st));
@@ -607,7 +607,7 @@ var Candid = (() => {
 	// and do not perscribe which values may take which arguments
 	// in particular, all values will eventually have `hash` may have a `note`
 	var Box  = r.Box  = ({ kind: 'box' });
-	var Hole = r.Hole = ({ kind: 'hole' });
+	var Hole = r.Hole = (h) => ({ kind: 'hole', hold: h });
 	var Star = r.Star = ({ kind: 'star' });
 	var Ref  = r.Ref  = (n) => ({ kind: 'ref', value: n });
 	var Rec  = r.Rec  = (n) => ({ kind: 'rec', value: n });
