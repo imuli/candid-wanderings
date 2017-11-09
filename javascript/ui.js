@@ -76,8 +76,7 @@ var viewExpr = ({expr, ctx, paren}) => {
 		expr.argname !== undefined ? E('span',{style:colorExpr(expr.type, ctx)}, expr.argname) : '',
 		expr.argname !== undefined ? ' : ' : '',
 		viewExpr({expr:expr.type, ctx:ctx, paren:true}),
-		' → ',
+		expr.kind == 'lam' ? ' → ' : ' ⇒ ',
 		viewExpr({expr:expr.body, ctx:[expr, ...ctx], paren:false}) ));
 	};
 };
-
