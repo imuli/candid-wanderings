@@ -112,7 +112,7 @@ value given to and returned by `id`.
 ```
 Boolean = * ⇒ 0 ⇒ 1 ⇒ 2
 True    = * → 0 → 1 → 1
-False   = * → 0 → 1 ⇒ 0
+False   = * → 0 → 1 → 0
 ```
 
 `Boolean` has exactly two inhabitants, `True` and `False`, which one is which
