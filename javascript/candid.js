@@ -139,10 +139,10 @@ var Candid = (() => {
 		case 'type': // FIXME how to detect intermediate function application?
 				var output_type = e.type;
 				for(var i = 0; i < ctx.length; i++){
-					if(ctx[i].exp.kind == 'lam'){
-						ctx[i].output_type = Pi(ctx[i].exp.type, shift(1, output_type));
+					if(ctx[i].kind == 'lam'){
+						ctx[i].output_type = shift(-i, Pi(ctx[i].type, shift(1, output_type)));
 					} else {
-						throw 'FIXME - Type assertion within ' + ctx[i].exp.kind;
+						throw 'FIXME - Type assertion within ' + ctx[i].kind;
 					}
 					output_type = ctx[i].output_type;
 				}
@@ -157,15 +157,15 @@ var Candid = (() => {
 		case 'ref':
 				if(ctx.length <= e.value)
 					throw { kind: 'Open Expression', ctx: ctx, exp: e };
-				e._type = ctx[e.value].input_type;
+				e._type = shift(e.value+1, ctx[e.value].type);
 				break;
 		case 'rec':
 				if(ctx.length <= e.value)
 					throw { kind: 'Open Expression', ctx: ctx, exp: e };
 				var rctx = ctx[e.value];
 				if(rctx.output_type !== undefined) {
-					e._type = rctx.output_type;
-				} else if(rctx.exp.kind === 'pi') {
+					e._type = shift(e.value, rctx.output_type);
+				} else if(rctx.kind === 'pi') {
 					e._type = Star;
 				} else {
 					throw { kind: 'Type Inference', ctx: ctx, exp: e};
@@ -186,7 +186,7 @@ var Candid = (() => {
 				var itt = typecheck(e.type, ctx);
 				if(itt.kind != 'star' && itt.kind != 'box')
 					throw { kind: 'Invalid Input Type', ctx: ctx, exp: e, type: itt };
-				var ott = typecheck(e.body, extend(ctx, e.type, e));
+				var ott = typecheck(e.body, [e, ...ctx]);
 				if(ott.kind != 'star' && ott.kind != 'box'){
 					throw { kind: 'Invalid Output Type', ctx: ctx, exp: e, type: ott };
 				}
@@ -194,25 +194,11 @@ var Candid = (() => {
 				break;
 		case 'lam':
 				typecheck(e.type, ctx);
-				var output_type = typecheck(e.body, extend(ctx, e.type, e));
+				var output_type = typecheck(e.body, [e, ...ctx]);
 				e._type = Pi(e.type, output_type, e.argname, undefined); // can't derive a name for the overall pi
 				break;
 		};
 		return e._type;
-	};
-
-	// extend a type checking context
-	var extend = (ctx, type, exp) => {
-		var newctx = ctx.map((e) => ({
-			exp: e.exp,
-			input_type: shift(1, e.input_type),
-			output_type: e.output_type === undefined ? undefined : shift(1, e.output_type),
-		}));
-		newctx.unshift({
-			exp: exp,
-			input_type: shift(1, type),
-		});
-		return newctx;
 	};
 
 	// contextual equivalence
