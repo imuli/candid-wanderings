@@ -46,7 +46,7 @@ var viewExpr = ({expr, ctx, paren}) => {
 	if(Candid.closed(expr) < 0)
 		ctx = [];
 	switch(expr.kind){
-	case 'star': return view('*');
+	case 'star': return view('★');
 	case 'box': return view('□');
 	case 'hole': return view('_');
 	case 'hash':
@@ -54,10 +54,10 @@ var viewExpr = ({expr, ctx, paren}) => {
 				return view(expr.name, colorExpr(expr._type, ctx));
 			return viewExpr({expr: Candid.unwrap(expr), ctx: ctx,paren: paren});
 	case 'ref':
-			var n = ctx[expr.value].argname;
+			var n = ctx[expr.value] === undefined ? undefined : ctx[expr.value].argname;
 			return view(n === undefined ? expr.value : n, colorExpr(expr._type, ctx));
 	case 'rec':
-			var n = ctx[expr.value].name;
+			var n = ctx[expr.value] === undefined ? undefined : ctx[expr.value].name;
 			return view(n === undefined ? '@'+expr.value : n, colorExpr(expr._type, ctx));
 	case 'type': return p(E('span', {className:'candid-type'},
 		viewExpr({expr:expr.type, ctx:ctx, paren:true}),
