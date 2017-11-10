@@ -316,6 +316,7 @@ var Candid = (() => {
 		if(path.length == 0) return repl;
 		expr[path[0]] = _update(expr[path[0]], path.slice(1), repl);
 		delete(expr.closed)
+		if(expr.kind != 'hash') delete(expr.hash)
 		return expr;
 	}
 
