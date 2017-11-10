@@ -339,7 +339,8 @@ var Candid = (() => {
 	// this requires type-checking them,
 	// and will throw a type error instead of saving ill-typed expressions.
 	// returns any wrapping unclosed expression or a hash.
-	var store = r.store = (e) => {
+	// replace the topmost expression if replace is set
+	var store = r.store = (e, replace) => {
 		switch(e.kind){
 		case 'star':
 		case 'hash':
@@ -387,7 +388,7 @@ var Candid = (() => {
 		var key = hashToUTF16(h);
 		var u = uses(e);
 		// so we can safely insert it into our store
-		if(_store[key] === undefined){
+		if(replace || _store[key] === undefined){
 			_store[key] = {
 				expr: e,
 				name: e.name,
