@@ -50,7 +50,7 @@ var viewExpr = ({expr, ctx, paren}) => {
 	case 'box': return view('□');
 	case 'hole': return view('_');
 	case 'hash':
-			if(expr.name !== undefined)
+			if(expr.name)
 				return view(expr.name, colorExpr(expr._type, ctx));
 			return viewExpr({expr: Candid.unwrap(expr), ctx: ctx,paren: paren});
 	case 'ref':
@@ -64,17 +64,17 @@ var viewExpr = ({expr, ctx, paren}) => {
 		' | ',
 		viewExpr({expr:expr.body, ctx:ctx, paren:false}) ));
 	case 'app': return p(E('span', {className:'candid-app'},
-		expr.name !== undefined ? E('span',{style:colorExpr(expr._type, ctx)}, expr.name) : '',
-		expr.name !== undefined ? ' = ' : '',
+		expr.name ? E('span',{style:colorExpr(expr._type, ctx)}, expr.name) : '',
+		expr.name ? ' = ' : '',
 		viewExpr({expr:expr.func, ctx:ctx, paren:false}),
 		' ',
 		viewExpr({expr:expr.arg, ctx:ctx, paren:true}) ));
 	case 'pi':
 	case 'lam': return p(E('span', {className:'candid-' + expr.kind},
-		expr.name !== undefined ? E('span',{style:colorExpr(expr._type, ctx)}, expr.name) : '',
-		expr.name !== undefined ? ' = ' : '',
-		expr.argname !== undefined ? E('span',{style:colorExpr(expr.type, ctx)}, expr.argname) : '',
-		expr.argname !== undefined ? ' : ' : '',
+		expr.name ? E('span',{style:colorExpr(expr._type, ctx)}, expr.name) : '',
+		expr.name ? ' = ' : '',
+		expr.argname ? E('span',{style:colorExpr(expr.type, ctx)}, expr.argname) : '',
+		expr.argname ? ' : ' : '',
 		viewExpr({expr:expr.type, ctx:ctx, paren:true}),
 		expr.kind == 'lam' ? ' → ' : ' ⇒ ',
 		viewExpr({expr:expr.body, ctx:[expr, ...ctx], paren:false}) ));
