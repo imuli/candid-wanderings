@@ -98,7 +98,7 @@ var Candid = (() => {
 	};
 
 	// shift unclosed references and recurs in an expression
-	var shift = (by, exp) => {
+	var shift = r.shift = (by, exp) => {
 		return over(
 			((e,c) => e.value >= c ? Ref(e.value+by) : e),
 			((e,c) => e.value >= c ? Rec(e.value+by) : e), 0, exp);
@@ -322,6 +322,13 @@ var Candid = (() => {
 	// replace a subexpression identified by `path` with `repl`
 	var update = r.update = (expr, path, repl) =>
 		_update(clone(expr), path, repl);
+
+	// return the subexpression identified by path
+	var byPath = r.byPath = (expr, path) => {
+		for(var seg of path)
+			expr = expr[seg];
+		return expr;
+	}
 
 	// expr, type, etc, of closed, fully hashed expressions
 	// indexed by hash.
