@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<title>Candid</title>
+	</head>
+	<body>
+		<div id="app"></div>
+	</body>
+	<script src="https://unpkg.com/inferno@3.10.1/dist/inferno.js"></script>
+	<script src="https://unpkg.com/inferno-create-element@3.10.1/dist/inferno-create-element.js"></script>
+	<script type="text/javascript" src="./blake2s1.js"></script>
+	<script type="text/javascript" src="./candid.js"></script>
+	<script type="text/javascript" src="./ui.js"></script>
+	<script type="text/javascript" src="./edit.js"></script>
+<style>
+.candid-matches {
+	position: absolute;
+	list-style: none;
+	border: 1px solid grey;
+	padding: 0;
+	margin: 0;
+	min-width: 20ex;
+}
+.candid-match:nth-child(even) {
+	background: #ffc0ff;
+}
+.candid-match:nth-child(odd) {
+	background: #ffffc0;
+}
+.candid-star {
+	display: inline-block;
+	width: 1em;
+	text-align: center;
+}
+.candid-hole {
+	display: inline-block;
+	min-width: 1em;
+	border-bottom: 1px dotted black;
+}
+</style>
+</html>
