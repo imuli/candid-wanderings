@@ -462,7 +462,7 @@ var Candid = (() => {
 
 	// load from the database
 	var load = r.load = () => new Promise((resolve, reject) => {
-		if(_db === undefined) return open().then(load);
+		if(_db === undefined) return open().then(load).then(resolve, reject);
 		var es = _db.transaction(["expr"]).objectStore("expr");
 		var req = es.getAll();
 		req.onsuccess = () => {
