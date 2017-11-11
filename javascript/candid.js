@@ -61,7 +61,7 @@ var Candid = (() => {
 				var type = reduce(e.type, r);
 				var body = reduce(e.body, r);
 				if(!(eq(type, e.type) && eq(body, e.body)))
-					red = Pi(type, body, argname, e.name);
+					red = Pi(type, body, e.argname, e.name);
 				break;
 		case 'lam':
 				var type = reduce(e.type, r);
@@ -148,11 +148,11 @@ var Candid = (() => {
 				}
 				var type = typecheck(e.body, ctx);
 				if(!ceq(type, e.type, [], []))
-					throw { kind: 'Failed Type Assertion', ctx: ctx, claim: claim, type: type };
+					throw { kind: 'Failed Type Assertion', ctx: ctx, et: claim, at: type };
 				e._type = e.type;
 				break;
 		case 'hash':
-				e._type = unwrap(fetch(e.hash, true).type);
+				e._type = unhash(fetch(e.hash, true).type);
 				break;
 		case 'ref':
 				if(ctx.length <= e.value)
@@ -172,23 +172,23 @@ var Candid = (() => {
 				}
 				break;
 		case 'app':
-				var ft = unwrap(typecheck(e.func, ctx));
+				var ft = reduce(unhash(typecheck(e.func, ctx)));
 				if(ft.kind != 'pi'){
 					throw { kind: 'Not a Function', ctx: ctx, exp: e, ft: ft };
 				}
 				var at = typecheck(e.arg, ctx);
 				if(!ceq(at, ft.type, [], [])){
-					throw { kind: 'Type Mismatch', ctx: ctx, exp: e, at: at };
+					throw { kind: 'Type Mismatch', ctx: ctx, exp: e, et: ft.type, at: at };
 				}
 				e._type = reduce(replace(e.arg, ft, ft.body), true);
 				break;
 		case 'pi':
 				var itt = typecheck(e.type, ctx);
 				if(itt.kind != 'star' && itt.kind != 'box')
-					throw { kind: 'Invalid Input Type', ctx: ctx, exp: e, type: itt };
+					throw { kind: 'Invalid Input Type', ctx: ctx, exp: e, at: itt };
 				var ott = typecheck(e.body, [e, ...ctx]);
 				if(ott.kind != 'star' && ott.kind != 'box'){
-					throw { kind: 'Invalid Output Type', ctx: ctx, exp: e, type: ott };
+					throw { kind: 'Invalid Output Type', ctx: ctx, exp: e, at: ott };
 				}
 				e._type = ott;
 				break;
@@ -421,6 +421,45 @@ var Candid = (() => {
 		}
 	}
 
+	// open up all hashes in an expression
+	var unhash = r.unhash = (e) => {
+		switch(e.kind){
+		case 'star':
+		case 'ref':
+		case 'rec':
+		case 'box':
+		case 'hole':
+				break;
+		case 'hash':
+				e = unhash(unwrap(e));
+				break;
+		case 'type':
+				var type = unhash(e.type);
+				var body = unhash(e.body);
+				if(type != e.type || body != e.body)
+					e = Type(type, body, e.note);
+				break;
+		case 'app':
+				var func = unhash(e.func);
+				var arg = unhash(e.arg);
+				if(func != e.func || arg != e.arg)
+					e = copynotes(App(func, arg, e.name), e);
+				break;
+		case 'pi':
+				var type = unhash(e.type);
+				var body = unhash(e.body);
+				if(type != e.type || body != e.body)
+					e = copynotes(Pi(type, body, e.argname, e.name), e);
+				break;
+		case 'lam':
+				var type = unhash(e.type);
+				var body = unhash(e.body);
+				if(type != e.type || body != e.body)
+					e = copynotes(Lam(type, body, e.argname, e.name), e);
+				break;
+		};
+		return e;
+	};
 	// lookup e in the store, if it's a hash
 	var unwrap = r.unwrap = (e) => e.kind == 'hash' ? fetch(e.hash, true).expr : e;
 	// fetch an entry for an expression (assert success if required
