@@ -240,7 +240,7 @@ var Candid = (() => {
 	// hash the relevant bits of an expression
 	// such that if a portion of the tree is replaced with a hash
 	// the overall hash comes out the same
-	var zero = [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
+	var zero = r.hash0 = [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
 	var hash = r.hash = (e) => {
 		// cache hashes
 		if(e.hash !== undefined) return e.hash;
@@ -382,7 +382,7 @@ var Candid = (() => {
 		// now that we've reached here, we know:
 		// * this expression is closed
 		// * it's either an app, pi, or lam
-		var type = typecheck(e);
+		var type = enhash(typecheck(e));
 		// * it's type checked
 		var h = hash(e);
 		var key = hashToUTF16(h);

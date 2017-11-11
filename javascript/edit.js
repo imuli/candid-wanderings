@@ -47,6 +47,10 @@ var stringEdit = (path, string) => {
 			case event.key == 'Backspace':
 				state.expr = Candid.update(state.expr, _path, string.slice(0,-1));
 				break;
+			case event.key == 'Escape':
+			case event.key == 'ArrowUp':
+				state.focus = path.slice(0,-1);
+				break;
 			case event.type == 'keydown':
 				return;
 			case event.key.length == '1':
@@ -69,6 +73,103 @@ var stringEdit = (path, string) => {
 	);
 };
 
+// Levenshtein distance, where capitalization costs 0.5, between strings a and b.
+var editDist = (a,b) => {
+	if(a.length < b.length) [a,b] = [b,a];
+	var prev = []; // prev = [0..b.length]
+	for(var i = 0; i < b.length+1; i++) prev.push(i);
+	for(var i = 0; i < a.length; i++){
+		var cur = [i+1];
+		for(var j = 0; j < b.length; j++){
+			var cost = a.charAt(i) === b.charAt(j) ? 0 :
+				a.charAt(i).toLowerCase() === b.charAt(j).toLowerCase() ? 0.5 : 1;
+			cur.push(Math.min(prev[j+1]+1, cur[j]+1, prev[j] + cost));
+		}
+		prev = cur;
+	}
+	return cur[b.length];
+}
+
+var hashEdit = (path, string) => {
+	string = string === undefined ? '' : string;
+	var key = (event) => {
+		state.focus = path;
+		var _path = path.slice(1);
+		switch(true){
+			case event.key == 'Backspace' && event.ctrlKey:
+				state.expr = Candid.update(state.expr, _path, '');
+				break;
+			case event.key == 'Backspace':
+				state.expr = Candid.update(state.expr, _path, string.slice(0,-1));
+				break;
+			case event.key == 'Escape':
+			case event.key == 'ArrowUp':
+				state.focus = path.slice(0,-1);
+				break;
+			case event.key == 'Enter':
+				// update the parent with the contents of the first match
+				var target = event.target.children[0].children[0];
+				if(target) target.click();
+				break;
+			case event.ctrlKey && !isNaN(parseInt(event.key)):
+				var target = event.target.children[0].children[parseInt(event.key)];
+				if(target) target.click();
+				break;
+			case event.type == 'keydown':
+				console.log(event.key);
+				return;
+			case event.key.length == '1':
+				state.expr = Candid.update(state.expr, _path, string + event.key);
+				break;
+			default:
+				return;
+		}
+		redraw();
+		event.preventDefault();
+		event.stopPropagation();
+	};
+
+	var focus = (event) => {
+		state.focus = path;
+		redraw();
+		event.preventDefault();
+		event.stopPropagation();
+	};
+
+	var search;
+	if(state.focus.join('!') == path.join('!')){
+		var list = [];
+		var name = string.toLowerCase();
+		for(k in Candid._store){
+			var entry = Candid._store[k];
+			if(entry && entry.name){
+				var e = Candid.Hash(entry.hash, entry.name);
+				e._type = entry.type;
+				e._dist = entry.name.toLowerCase().indexOf(name);
+				if(e._dist < 0) e._dist = name.length;
+				e._dist += editDist(string, entry.name)/entry.name.length;
+				list.push(e);
+			}
+		}
+		list = list.sort((a,b) =>
+			(a._dist - b._dist) ||
+			(a.name < b.name ? -1 : 1)
+		).slice(0,10);
+		console.log(list.map((e)=>e.name));
+		search = E('ul', { className: 'candid-matches' }, ...list.map((e)=>listEntry(e, [])));
+	}
+	return E('span',
+		{ id: path.join('!'),
+			tabindex: 0,
+			onKeyPress: key,
+			onKeyDown: key,
+			onFocus: focus,
+		},
+		string === '' ? '﹟' : string,
+		search,
+	);
+};
+
 var exprEdit = (path, expr, ctx, paren) => {
 
 	var key = (event) => {
@@ -78,6 +179,9 @@ var exprEdit = (path, expr, ctx, paren) => {
 		var _path = path.slice(1);
 		state.focus = path;
 		switch(true){
+			case event.key == 'ArrowUp':
+				state.focus = path.slice(0,-1);
+				break;
 			case event.type == 'keydown' && event.key == 'Enter':
 				if(event.shiftKey){
 					Candid.store(Candid.typecheck(state.expr), true);
@@ -132,6 +236,10 @@ var exprEdit = (path, expr, ctx, paren) => {
 				state.expr = Candid.update(e, _path, Candid.Hole(''));
 				break;
 			// unary expressions
+			case event.key == 'e': // hash lookup
+				state.expr = Candid.update(e, _path, Candid.Hash(Candid.hash0, ''));
+				state.focus = [...path, 'name'];
+				break;
 			case event.key == 'r': // reference
 				state.expr = Candid.update(e, _path, Candid.Ref());
 				break;
@@ -178,6 +286,19 @@ var exprEdit = (path, expr, ctx, paren) => {
 				state.focus = [...path, 'func'];
 				break;
 			// convenience
+			case event.key == '-': // unwrap and enhash expressions
+				if(expr.kind == 'hash'){
+					state.expr = Candid.update(e, _path, Candid.unwrap(expr));
+				} else {
+					state.expr = Candid.update(e, _path, Candid.enhash(expr));
+				}
+				break;
+			case event.key == '=': // reduction
+				state.expr = Candid.update(e, _path, Candid.enhash(Candid.reduce(Candid.unhash(expr), false)));
+				break;
+			case event.key == '+': // recursive reduction
+				state.expr = Candid.update(e, _path, Candid.enhash(Candid.reduce(Candid.unhash(expr), true)));
+				break;
 			case event.key == '~': // convert Pi to Lam and back
 				var f = {pi: Candid.Lam, lam: Candid.Pi}[expr.kind];
 				if(f){
@@ -250,11 +371,14 @@ var exprEdit = (path, expr, ctx, paren) => {
 		case 'hash':
 			var entry = Candid.fetch(expr.hash);
 			var name = entry ? entry.name : expr.name;
-			if(name){
-				return ed({}, name);
-			} else {
-				expr = entry.expr;
-				return exprEdit(path, expr, ctx, paren);
+			switch(true){
+				case !entry:
+					return ed({}, hashEdit([...path, 'name'], name));
+				case !!name:
+					return ed({}, name);
+				default:
+					state.expr = Candid.update(state.expr, path.slice(0,-1), entry.expr);
+					return exprEdit(path, entry.expr, ctx, paren);
 			}
 		case 'app': return p(ed({},
 			exprEdit([...path, 'func'], expr.func, ctx, false),
@@ -275,18 +399,26 @@ var exprEdit = (path, expr, ctx, paren) => {
 
 };
 
-var listEntry = (expr) => {
+var listEntry = (expr, ctx) => {
 	click = (event) => {
-		if(state.focus.length == 1){
-			state.expr = Candid.unwrap(expr);
-		} else {
-			state.expr = Candid.update(state.expr, state.focus.slice(1), expr);
+		switch(state.focus[state.focus.length-1]){
+			case 'state':
+				state.expr = Candid.unwrap(expr);
+			case 'argname':
+			case 'name':
+			case 'value':
+				state.expr = Candid.update(state.expr, state.focus.slice(1,-1), expr);
+				state.focus = state.focus.slice(0,-1);
+				break;
+			default:
+				state.expr = Candid.update(state.expr, state.focus.slice(1), expr);
+				break;
 		}
 		redraw();
 		event.preventDefault();
 		event.stopPropagation();
 	};
-	return E('li', { onClick: click }, viewExpr({expr:expr, ctx:[]}));
+	return E('li', { onClick: click }, viewExpr({expr:expr, ctx:ctx}));
 };
 
 var storeList = () => {
@@ -296,7 +428,7 @@ var storeList = () => {
 		if(!s) continue;
 		var e = Candid.Hash(s.hash, s.name);
 		e._type = s.type;
-		list.push(listEntry(e));
+		list.push(listEntry(e, []));
 	};
 	return E('ul', { className: 'candid-list' }, ...list);
 };
@@ -323,7 +455,6 @@ var viewType = (expr) => {
 var view = () => E('div', null,
 	exprEdit(['edit'], state.expr),
 	viewType(state.expr),
-	storeList(),
 );
 var redraw = () => {
 	Inferno.render(view(), document.getElementById('app'));

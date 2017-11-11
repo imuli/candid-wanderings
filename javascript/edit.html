@@ -15,12 +15,18 @@
 	<script type="text/javascript" src="./edit.js"></script>
 <style>
 .candid-matches {
+	counter-reset: n -1;
 	position: absolute;
-	list-style: none;
 	border: 1px solid grey;
+	background: white;
 	padding: 0;
 	margin: 0;
 	min-width: 20ex;
+		starts-from:
+}
+.candid-matches > li::before {
+	content: counter(n) ". ";
+	counter-increment: n;
 }
 .candid-match:nth-child(even) {
 	background: #ffc0ff;
