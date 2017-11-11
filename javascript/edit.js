@@ -169,6 +169,12 @@ var exprEdit = (path, expr, ctx, paren) => {
 				state.focus = [...path, 'func'];
 				break;
 			// convenience
+			case event.key == '~': // convert Pi to Lam and back
+				var f = {pi: Candid.Lam, lam: Candid.Pi}[expr.kind];
+				if(f){
+					state.expr = Candid.update(e, _path, f(expr.type, expr.body, expr.argname, expr.name));
+				}
+				break;
 			case event.key == ')': // encapsulate parent Apply's parent Apply in new Apply
 				if(_path[_path.length-1] == 'arg'){
 					_path = _path.slice(0,-1);
