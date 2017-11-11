@@ -291,6 +291,9 @@ var viewType = (expr) => {
 			{ className: 'candid-typeerror' },
 			E('h2', {}, e.kind),
 			e.exp ? viewExpr({expr:e.exp, ctx:e.ctx}) : undefined,
+			e.ft ? viewExpr({expr:e.ft, ctx:e.ctx}) : undefined,
+			e.et ? viewExpr({expr:e.et, ctx:e.ctx}) : undefined,
+			e.at ? viewExpr({expr:e.at, ctx:e.ctx}) : undefined,
 		);
 	}
 };
