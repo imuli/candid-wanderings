@@ -421,6 +421,18 @@ var Candid = (() => {
 		}
 	}
 
+	var remove = r.remove = (e) => {
+		var h = hashToUTF16(hash(e));
+		if(h in _store){
+			for(k in _store){
+				if(_store[k] && _store[k].uses[h]) return false;
+			}
+			_store[h] = undefined;
+			return true;
+		}
+		return undefined;
+	}
+
 	// open up all hashes in an expression
 	var unhash = r.unhash = (e) => {
 		switch(e.kind){
@@ -534,7 +546,13 @@ var Candid = (() => {
 		var i = 0, keys = Object.keys(_store);
 		var go = () => {
 			if(i >= keys.length) return resolve();
-			var p = es.put(_store[keys[i]]);
+			var p;
+			if(_store[keys[i]] === undefined){
+				p = es.delete(hashFromUTF16(keys[i], {offset:0}));
+				delete _store[keys[i]];
+			} else {
+				p = es.put(_store[keys[i]]);
+			}
 			i++;
 			p.onsuccess = go;
 			p.onerror = reject;

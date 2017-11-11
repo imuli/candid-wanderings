@@ -114,6 +114,11 @@ var exprEdit = (path, expr, ctx, paren) => {
 				state.expr = Candid.update(e, _path, expr);
 				state.focus = ['edit', ..._path];
 				break;
+			case event.type == 'keydown' && event.shiftKey && event.key == 'Delete':
+				state.expr = Candid.update(e, _path, Candid.unwrap(expr));
+				Candid.remove(expr);
+				Candid.save();
+				break;
 			case event.type == 'keydown' && event.key == 'Tab':
 			case event.type == 'keydown':
 				return;
@@ -288,6 +293,7 @@ var storeList = () => {
 	var list = [];
 	for(var h in Candid._store){
 		var s = Candid._store[h];
+		if(!s) continue;
 		var e = Candid.Hash(s.hash, s.name);
 		e._type = s.type;
 		list.push(listEntry(e));
