@@ -460,6 +460,47 @@ var Candid = (() => {
 		};
 		return e;
 	};
+
+	// hash the parts of an expression that are in the store
+	var enhash = r.enhash = (e) => {
+		if(fetch(hash(e)))
+			return copynotes(Hash(hash(e), e.name), e);
+		switch(e.kind){
+		case 'star':
+		case 'ref':
+		case 'rec':
+		case 'box':
+		case 'hole':
+		case 'hash':
+				break;
+		case 'type':
+				var type = enhash(e.type);
+				var body = enhash(e.body);
+				if(type != e.type || body != e.body)
+					e = Type(type, body, e.note);
+				break;
+		case 'app':
+				var func = enhash(e.func);
+				var arg = enhash(e.arg);
+				if(func != e.func || arg != e.arg)
+					e = copynotes(App(func, arg, e.name), e);
+				break;
+		case 'pi':
+				var type = enhash(e.type);
+				var body = enhash(e.body);
+				if(type != e.type || body != e.body)
+					e = copynotes(Pi(type, body, e.argname, e.name), e);
+				break;
+		case 'lam':
+				var type = enhash(e.type);
+				var body = enhash(e.body);
+				if(type != e.type || body != e.body)
+					e = copynotes(Lam(type, body, e.argname, e.name), e);
+				break;
+		};
+		return e;
+	};
+
 	// lookup e in the store, if it's a hash
 	var unwrap = r.unwrap = (e) => e.kind == 'hash' ? fetch(e.hash, true).expr : e;
 	// fetch an entry for an expression (assert success if required
