@@ -79,8 +79,12 @@ var exprEdit = (path, expr, ctx, paren) => {
 		state.focus = path;
 		switch(true){
 			case event.type == 'keydown' && event.key == 'Enter':
-				state.expr = Candid.store(state.expr, true);
-				state.focus = ['edit'];
+				if(event.shiftKey){
+					Candid.store(Candid.typecheck(state.expr), true);
+				} else {
+					state.expr = Candid.store(state.expr, true);
+					state.focus = ['edit'];
+				}
 				Candid.save();
 				break;
 			case event.type == 'keydown' && event.key == 'Backspace':
@@ -240,9 +244,13 @@ var exprEdit = (path, expr, ctx, paren) => {
 		);
 		case 'hash':
 			var entry = Candid.fetch(expr.hash);
-			return ed({},
-				entry ? entry.name : expr.name === undefined ? Candid.toId(expr.hash) : expr.name,
-			);
+			var name = entry ? entry.name : expr.name;
+			if(name){
+				return ed({}, name);
+			} else {
+				expr = entry.expr;
+				return exprEdit(path, expr, ctx, paren);
+			}
 		case 'app': return p(ed({},
 			exprEdit([...path, 'func'], expr.func, ctx, false),
 			' ',
@@ -290,9 +298,11 @@ var storeList = () => {
 var viewType = (expr) => {
 	try  {
 		var type = Candid.typecheck(expr);
-		type = Candid.store(type); // for the hash reduction
+		type = Candid.enhash(type);
+		Candid.typecheck(type);
 		return E('div', { className: 'candid-typecheck' }, viewExpr({expr:type, ctx:[]}));
 	} catch (e) {
+		console.warn(e);
 		return E('div',
 			{ className: 'candid-typeerror' },
 			E('h2', {}, e.kind),
