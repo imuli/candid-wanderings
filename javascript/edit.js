@@ -156,7 +156,7 @@ var hashEdit = (path, string) => {
 			(a.name < b.name ? -1 : 1)
 		).slice(0,10);
 		console.log(list.map((e)=>e.name));
-		search = E('ul', { className: 'candid-matches' }, ...list.map((e)=>listEntry(e, [])));
+		search = E('ol', { className: 'candid-matches' }, ...list.map((e)=>listEntry(e, [])));
 	}
 	return E('span',
 		{ id: path.join('!'),
@@ -166,6 +166,63 @@ var hashEdit = (path, string) => {
 			onFocus: focus,
 		},
 		string === '' ? '﹟' : string,
+		search,
+	);
+};
+
+var reEdit = (path, refrec, ctx) => {
+	var key = (event) => {
+		state.focus = path;
+		var _path = path.slice(1);
+		switch(true){
+			case event.key == 'Backspace':
+			case event.key == 'Escape':
+			case event.key == 'ArrowUp':
+				state.focus = path.slice(0,-1);
+				state.expr = Candid.update(state.expr, _path.slice(0,-1), Candid.Hole(''));
+				break;
+			case event.key == 'Enter':
+				// update the parent with the contents of the first match
+				var target = event.target.children[0].children[0];
+				if(target) target.click();
+				break;
+			case event.type == 'keydown':
+				return;
+			case event.key.length == '1' && !isNaN(parseInt(event.key,36)):
+				var target = event.target.children[0].children[parseInt(event.key, 36)];
+				if(target) target.click();
+				break;
+			default:
+				return;
+		}
+		redraw();
+		event.preventDefault();
+		event.stopPropagation();
+	};
+
+	var focus = (event) => {
+		state.focus = path;
+		redraw();
+		event.preventDefault();
+		event.stopPropagation();
+	};
+
+	var search;
+	if(state.focus.join('!') == path.join('!')){
+		var list = [];
+		for(k in ctx){
+			list.push(listEntry(refrec(k), ctx));
+		}
+		search = E('ol', { className: 'candid-matches' }, ...list);
+	}
+	return E('span',
+		{ id: path.join('!'),
+			tabindex: 0,
+			onKeyPress: key,
+			onKeyDown: key,
+			onFocus: focus,
+		},
+		'?',
 		search,
 	);
 };
@@ -242,9 +299,11 @@ var exprEdit = (path, expr, ctx, paren) => {
 				break;
 			case event.key == 'r': // reference
 				state.expr = Candid.update(e, _path, Candid.Ref());
+				state.focus = [...path, 'value'];
 				break;
 			case event.key == 'R': // Recursion
 				state.expr = Candid.update(e, _path, Candid.Rec());
+				state.focus = [...path, 'value'];
 				break;
 			// binary expressions
 			case event.key == 'f': // function
@@ -363,10 +422,10 @@ var exprEdit = (path, expr, ctx, paren) => {
 		case 'hole': return ed({}, '\xa0');
 		case 'star': return ed({}, '★');
 		case 'ref': return ed({},
-			expr.value === undefined ? '?' : ctx[expr.value] && ctx[expr.value].argname ? ctx[expr.value].argname : expr.value.toString(),
+			expr.value === undefined ? reEdit([...path, 'value'], Candid.Ref, ctx) : ctx[expr.value] && ctx[expr.value].argname ? ctx[expr.value].argname : expr.value.toString(),
 		);
 		case 'rec': return ed({},
-			expr.value === undefined ? '?' : ctx[expr.value] && ctx[expr.value].name ? ctx[expr.value].name : expr.value.toString(),
+			expr.value === undefined ? reEdit([...path, 'value'], Candid.Rec, ctx) : ctx[expr.value] && ctx[expr.value].name ? ctx[expr.value].name : expr.value.toString(),
 		);
 		case 'hash':
 			var entry = Candid.fetch(expr.hash);
@@ -414,6 +473,7 @@ var listEntry = (expr, ctx) => {
 				state.expr = Candid.update(state.expr, state.focus.slice(1), expr);
 				break;
 		}
+		shiftFocus(toNext, state.focus);
 		redraw();
 		event.preventDefault();
 		event.stopPropagation();
