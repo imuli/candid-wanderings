@@ -177,7 +177,7 @@ var Candid = (() => {
 					throw { kind: 'Not a Function', ctx: ctx, exp: e, ft: ft };
 				}
 				var at = typecheck(e.arg, ctx);
-				if(!ceq(at, ft.type, [], [])){
+				if(!ceq(reduce(unhash(at)), ft.type, [], [])){
 					throw { kind: 'Type Mismatch', ctx: ctx, exp: e, et: ft.type, at: at };
 				}
 				e._type = reduce(replace(e.arg, ft, ft.body), true);
