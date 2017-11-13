@@ -147,8 +147,8 @@ var Candid = (() => {
 					output_type = ctx[i].output_type;
 				}
 				var type = typecheck(e.body, ctx);
-				if(!ceq(type, e.type, [], []))
-					throw { kind: 'Failed Type Assertion', ctx: ctx, et: claim, at: type };
+				if(!ceq(reduce(unhash(type)), reduce(unhash(e.type)), [], []))
+					throw { kind: 'Failed Type Assertion', ctx: ctx, et: e.type, at: type };
 				e._type = e.type;
 				break;
 		case 'hash':
