@@ -14,26 +14,35 @@
 	<script type="text/javascript" src="./ui.js"></script>
 	<script type="text/javascript" src="./edit.js"></script>
 <style>
+
 .candid-matches {
+	background: white;
 	counter-reset: n -1;
 	position: absolute;
-	border: 1px solid grey;
-	background: white;
-	padding: 0;
-	margin: 0;
 	min-width: 20ex;
-		starts-from:
+	padding: 0;
+	border: 1px solid #c0c0c0;
 }
-.candid-matches > li::before {
+.candid-matches > * > * {
+	padding: 0 1ex;
+}
+.candid-matches > *::before {
 	content: counter(n) ". ";
 	counter-increment: n;
+	padding: 0 1ex;
 }
-.candid-match:nth-child(even) {
-	background: #ffc0ff;
+.candid-matches > *:nth-child(11) {
+	counter-reset: n 0;
 }
-.candid-match:nth-child(odd) {
-	background: #ffffc0;
+.candid-matches > *+*+*+*+*+*+*+*+*+*+*::before {
+	content: counter(n, lower-alpha) ". ";
+	counter-increment: n;
+	display: table-cell;
 }
+.candid-matches > :nth-child(even) {
+	background: #fff0ff;
+}
+
 .candid-star {
 	display: inline-block;
 	width: 1em;

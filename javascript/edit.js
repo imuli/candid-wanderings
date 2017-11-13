@@ -156,7 +156,7 @@ var hashEdit = (path, string) => {
 			(a.name < b.name ? -1 : 1)
 		).slice(0,10);
 		console.log(list.map((e)=>e.name));
-		search = E('ol', { className: 'candid-matches' }, ...list.map((e)=>listEntry(e, [])));
+		search = E('table', { className: 'candid-matches' }, ...list.map((e)=>listEntry(e, [])));
 	}
 	return E('span',
 		{ id: path.join('!'),
@@ -211,9 +211,9 @@ var reEdit = (path, refrec, ctx) => {
 	if(state.focus.join('!') == path.join('!')){
 		var list = [];
 		for(k in ctx){
-			list.push(listEntry(refrec(k), ctx));
+			list.push(listEntry(refrec(k|0), ctx));
 		}
-		search = E('ol', { className: 'candid-matches' }, ...list);
+		search = E('table', { className: 'candid-matches' }, ...list);
 	}
 	return E('span',
 		{ id: path.join('!'),
@@ -478,7 +478,11 @@ var listEntry = (expr, ctx) => {
 		event.preventDefault();
 		event.stopPropagation();
 	};
-	return E('li', { onClick: click }, viewExpr({expr:expr, ctx:ctx}));
+	return E('tr', { onClick: click },
+		E('td', {}, viewExpr({expr:expr, ctx:ctx})),
+		E('td', {}, ':'),
+		E('td', {}, viewExpr({expr:Candid.enhash(Candid.typecheck(expr, ctx)), ctx:ctx})),
+	);
 };
 
 var storeList = () => {
@@ -490,7 +494,7 @@ var storeList = () => {
 		e._type = s.type;
 		list.push(listEntry(e, []));
 	};
-	return E('ul', { className: 'candid-list' }, ...list);
+	return E('table', { className: 'candid-list' }, ...list);
 };
 
 var viewType = (expr) => {
