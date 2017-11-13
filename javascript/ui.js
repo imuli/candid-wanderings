@@ -50,9 +50,14 @@ var viewExpr = ({expr, ctx, paren}) => {
 	case 'box': return view('□');
 	case 'hole': return view('_');
 	case 'hash':
-			if(expr.name)
-				return view(expr.name, colorExpr(expr._type, ctx));
-			return viewExpr({expr: Candid.unwrap(expr), ctx: ctx,paren: paren});
+			var entry = Candid.fetch(expr.hash);
+			var name = entry ? entry.name : expr.name;
+			var type = entry ? entry.type : expr._type;
+			if(name)
+				return view(name, colorExpr(type, []));
+			if(entry)
+				return viewExpr({expr: entry.expr, ctx: [], paren: paren});
+			return Candid.toId(expr.hash);
 	case 'ref':
 			var n = ctx[expr.value] === undefined ? undefined : ctx[expr.value].argname;
 			return view(n === undefined ? expr.value : n, colorExpr(expr._type, ctx));
