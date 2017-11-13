@@ -68,8 +68,9 @@ var stringEdit = (path, string) => {
 			tabindex: 0,
 			onKeyPress: key,
 			onKeyDown: key,
+			className: 'candid-' + path[path.length-1],
 		},
-		string === '' ? '\xa0' : string,
+		string,
 	);
 };
 
@@ -447,12 +448,17 @@ var exprEdit = (path, expr, ctx, paren) => {
 		case 'pi':
 		case 'lam': return p(ed({},
 			stringEdit([...path, 'name'], expr.name),
-			expr.name ? ' = ' : '',
+			expr.name ? E('span', {className:'candid-equals'}, '=') : '',
 			stringEdit([...path, 'argname'], expr.argname),
 			expr.argname ? ' : ' : '',
 			exprEdit([...path, 'type'], expr.type, ctx, true),
-			expr.kind == 'lam' ? ' → ' : ' ⇒ ',
+			E('span', {className:'candid-arrow'}, expr.kind == 'lam' ? '→' : '⇒'),
 			exprEdit([...path, 'body'], expr.body, [expr, ...ctx], false),
+		));
+		case 'type': return p(ed({},
+			exprEdit([...path, 'type'], expr.type, ctx, false),
+			E('br',{}),
+			exprEdit([...path, 'body'], expr.body, ctx, false),
 		));
 	}
 
@@ -507,7 +513,7 @@ var viewType = (expr) => {
 		console.warn(e);
 		return E('div',
 			{ className: 'candid-typeerror' },
-			E('h2', {}, e.kind),
+			E('h3', {}, e.kind),
 			e.exp ? viewExpr({expr:e.exp, ctx:e.ctx}) : undefined,
 			e.ft ? viewExpr({expr:e.ft, ctx:e.ctx}) : undefined,
 			e.et ? viewExpr({expr:e.et, ctx:e.ctx}) : undefined,
@@ -516,9 +522,9 @@ var viewType = (expr) => {
 	}
 };
 
-var view = () => E('div', null,
-	exprEdit(['edit'], state.expr),
+var view = () => E('div', {className:'edit'},
 	viewType(state.expr),
+	E('div', {}, exprEdit(['edit'], state.expr)),
 );
 var redraw = () => {
 	Inferno.render(view(), document.getElementById('app'));
