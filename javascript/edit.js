@@ -238,7 +238,13 @@ var exprEdit = (path, expr, ctx, paren) => {
 		state.focus = path;
 		switch(true){
 			case event.key == 'ArrowUp':
-				state.focus = path.slice(0,-1);
+				if(path.length > 1)
+					state.focus = path.slice(0,-1);
+				break;
+			case event.key == 'ArrowDown':
+				var sub = {pi: 'body', lam: 'body', type: 'body', app: 'arg'}[expr.kind];
+				if(sub !== undefined)
+					state.focus = [...path, sub];
 				break;
 			case event.type == 'keydown' && event.key == 'Enter':
 				if(event.shiftKey){
