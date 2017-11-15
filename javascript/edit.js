@@ -4,6 +4,13 @@ var state =
 		expr: Candid.Hole(''),
 	};
 
+var focus = (path) => (event) => {
+	state.focus = path;
+	redraw();
+	event.preventDefault();
+	event.stopPropagation();
+};
+
 var toNext = {
 	name: ['argname', 'func'],
 	argname: ['type'],
@@ -130,13 +137,6 @@ var hashEdit = (path, string) => {
 		event.stopPropagation();
 	};
 
-	var focus = (event) => {
-		state.focus = path;
-		redraw();
-		event.preventDefault();
-		event.stopPropagation();
-	};
-
 	var search;
 	if(state.focus.join('!') == path.join('!')){
 		var list = [];
@@ -164,7 +164,7 @@ var hashEdit = (path, string) => {
 			tabindex: 0,
 			onKeyPress: key,
 			onKeyDown: key,
-			onFocus: focus,
+			onFocus: focus(path),
 		},
 		string === '' ? '﹟' : string,
 		search,
@@ -201,13 +201,6 @@ var reEdit = (path, refrec, ctx) => {
 		event.stopPropagation();
 	};
 
-	var focus = (event) => {
-		state.focus = path;
-		redraw();
-		event.preventDefault();
-		event.stopPropagation();
-	};
-
 	var search;
 	if(state.focus.join('!') == path.join('!')){
 		var list = [];
@@ -221,7 +214,7 @@ var reEdit = (path, refrec, ctx) => {
 			tabindex: 0,
 			onKeyPress: key,
 			onKeyDown: key,
-			onFocus: focus,
+			onFocus: focus(path),
 		},
 		'?',
 		search,
@@ -403,20 +396,13 @@ var exprEdit = (path, expr, ctx, paren) => {
 		event.stopPropagation();
 	};
 
-	var focus = (event) => {
-		state.focus = path;
-		redraw();
-		event.preventDefault();
-		event.stopPropagation();
-	};
-
 	var p = paren ? (x) => E('span', {className:'candid-paren'}, '(', x, ')') : (x) => x;
 
 	var ed = (props, ...children) => E('span',
 		Object.assign({ className: 'candid-' + expr.kind,
 			onKeyPress: key,
 			onKeyDown: key,
-			onFocus: focus,
+			onFocus: focus(path),
 			tabindex: 0,
 			id: id,
 		}, props),
