@@ -380,6 +380,10 @@ var exprEdit = (path, expr, ctx, paren) => {
 				state.expr = Candid.update(e, _path, Candid.App(expr, Candid.Hole('')));
 				state.focus = ['edit', ..._path, 'arg']
 				break;
+			// expression naming
+			case expr.kind in {'pi':1,'lam':1,'app':1,'type':1} && event.key == 'n':
+				state.focus = [...path, 'name'];
+				break;
 			// for filling in references and recurs
 			case expr.kind == 'ref' && !isNaN(parseInt(event.key)):
 				state.expr = Candid.update(e, _path, Candid.Ref(event.key|0));
@@ -433,13 +437,17 @@ var exprEdit = (path, expr, ctx, paren) => {
 					return exprEdit(path, entry.expr, ctx, paren);
 			}
 		case 'app': return p(ed({},
+			expr.name || state.focus.join('!') == id+'!name' ?
+				stringEdit([...path, 'name'], expr.name) : null,
+			expr.name ? E('span', {className:'candid-equals'}, '=') : '',
 			exprEdit([...path, 'func'], expr.func, ctx, false),
 			' ',
 			exprEdit([...path, 'arg'], expr.arg, ctx, true),
 		));
 		case 'pi':
 		case 'lam': return p(ed({},
-			stringEdit([...path, 'name'], expr.name),
+			expr.name || state.focus.join('!') == id+'!name' ?
+				stringEdit([...path, 'name'], expr.name) : null,
 			expr.name ? E('span', {className:'candid-equals'}, '=') : '',
 			stringEdit([...path, 'argname'], expr.argname),
 			expr.argname ? ' : ' : '',
@@ -448,6 +456,9 @@ var exprEdit = (path, expr, ctx, paren) => {
 			exprEdit([...path, 'body'], expr.body, [expr, ...ctx], false),
 		));
 		case 'type': return p(ed({},
+			expr.name || state.focus.join('!') == id+'!name' ?
+				stringEdit([...path, 'name'], expr.name) : null,
+			expr.name ? E('span', {className:'candid-equals'}, '=') : '',
 			exprEdit([...path, 'type'], expr.type, ctx, false),
 			E('br',{}),
 			exprEdit([...path, 'body'], expr.body, ctx, false),
