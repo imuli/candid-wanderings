@@ -350,35 +350,31 @@ var Candid = (() => {
 		case 'hole': throw 'Attempted to store ' + e.kind + '.';
 		case 'type':
 				var type = store(e.type);
-				var body = store(e.body);
+				var body = unwrap(store(e.body));
 				if(type != e.type || body != e.body)
 					e = copynotes(Type(type, body, e.name), e);
-				return e;
+				replace = true;
+				break;
 		case 'app':
 				var func = store(e.func);
 				var arg = store(e.arg);
 				if(func != e.func || arg != e.arg)
 					e = copynotes(App(func, arg, e.name), e);
-				if(func.kind != 'hash' || arg.kind != 'hash')
-					return e;
 				break;
 		case 'pi':
 				var type = store(e.type);
 				var body = store(e.body);
 				if(type != e.type || body != e.body)
 					e = copynotes(Pi(type, body, e.argname, e.name), e);
-				if(closed(type) >= 0 || closed(body) >= 1)
-					return e;
 				break;
 		case 'lam':
 				var type = store(e.type);
 				var body = store(e.body);
 				if(type != e.type || body != e.body)
 					e = copynotes(Lam(type, body, e.argname, e.name), e);
-				if(closed(type) >= 0 || closed(body) >= 1)
-					return e;
 				break;
 		};
+		if(closed(e) >= 0) return e;
 		// now that we've reached here, we know:
 		// * this expression is closed
 		// * it's either an app, pi, or lam
