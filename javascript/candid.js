@@ -113,7 +113,7 @@ var Candid = (() => {
 		case 'pi':   r = Pi(over(ref,rec,c,e.type), over(ref,rec,c+1,e.body), e.argname, e.name); break;
 		case 'lam':  r = Lam(over(ref,rec,c,e.type), over(ref,rec,c+1,e.body), e.argname, e.name); break;
 		case 'app':  r = App(over(ref,rec,c,e.func), over(ref,rec,c,e.arg), e.name); break;
-		case 'type': r = Type(over(ref,rec,c,e.type), over(ref,rec,c,e.body)); break;
+		case 'type': r = Type(over(ref,rec,c,e.type), over(ref,rec,c,e.body), e.name); break;
 		};
 		copynotes(r, e);
 		return r;
@@ -352,7 +352,7 @@ var Candid = (() => {
 				var type = store(e.type);
 				var body = store(e.body);
 				if(type != e.type || body != e.body)
-					e = Type(type, body, e.note);
+					e = copynotes(Type(type, body, e.name), e);
 				return e;
 		case 'app':
 				var func = store(e.func);
@@ -449,7 +449,7 @@ var Candid = (() => {
 				var type = unhash(e.type);
 				var body = unhash(e.body);
 				if(type != e.type || body != e.body)
-					e = Type(type, body, e.note);
+					e = copynotes(Type(type, body, e.name), e);
 				break;
 		case 'app':
 				var func = unhash(e.func);
@@ -489,7 +489,7 @@ var Candid = (() => {
 				var type = enhash(e.type);
 				var body = enhash(e.body);
 				if(type != e.type || body != e.body)
-					e = Type(type, body, e.note);
+					e = copynotes(Type(type, body, e.name), e);
 				break;
 		case 'app':
 				var func = enhash(e.func);
@@ -708,7 +708,7 @@ var Candid = (() => {
 	var Lam  = r.Lam  = (t,b,an,n) => ({ kind: 'lam', type: t, body: b, argname: an, name: n });
 	var App  = r.App  = (f,a,n) => ({ kind: 'app', func: f, arg: a, name: n });
 	var Apps = r.Apps = (f,...as) => as.reduce((f,a) => ({ kind: 'app', func: f, arg: a }), f);
-	var Type = r.Type = (t,b,n) => ({ kind: 'type', type: t, body: b, note: n });
+	var Type = r.Type = (t,b,n) => ({ kind: 'type', type: t, body: b, name: n });
 	var Hash = r.Hash = (h,n) => ({ kind: 'hash', hash: h, name: n });
 
 	return r;
