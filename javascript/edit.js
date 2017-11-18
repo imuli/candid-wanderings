@@ -124,7 +124,6 @@ var hashEdit = (path, string) => {
 				if(target) target.click();
 				break;
 			case event.type == 'keydown':
-				console.log(event.key);
 				return;
 			case event.key.length == '1':
 				state.expr = Candid.update(state.expr, _path, string + event.key);
@@ -156,7 +155,6 @@ var hashEdit = (path, string) => {
 			(a._dist - b._dist) ||
 			(a.name < b.name ? -1 : 1)
 		).slice(0,10);
-		console.log(list.map((e)=>e.name));
 		search = E('table', { className: 'candid-matches' }, ...list.map((e)=>listEntry(e, [])));
 	}
 	return E('span',
@@ -261,7 +259,6 @@ var exprEdit = (path, expr, ctx, paren) => {
 					case 'pi':
 						expr = mpath == 'type' ? Candid.shift(-1, pexp.body) : pexp.type;
 						_path = ppath;
-						console.log(_path, expr);
 						break;
 					case 'type':
 						expr = mpath == 'type' ? pexp.body : pexp.type;
@@ -384,15 +381,7 @@ var exprEdit = (path, expr, ctx, paren) => {
 			case expr.kind in {'pi':1,'lam':1,'app':1,'type':1} && event.key == 'n':
 				state.focus = [...path, 'name'];
 				break;
-			// for filling in references and recurs
-			case expr.kind == 'ref' && !isNaN(parseInt(event.key)):
-				state.expr = Candid.update(e, _path, Candid.Ref(event.key|0));
-				break;
-			case expr.kind == 'rec' && !isNaN(parseInt(event.key)):
-				state.expr = Candid.update(e, _path, Candid.Rec(event.key|0));
-				break;
 			default:
-				console.log(event.key);
 				return;
 		}
 		redraw();
