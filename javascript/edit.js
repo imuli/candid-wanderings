@@ -476,10 +476,16 @@ var listEntry = (expr, ctx) => {
 		event.preventDefault();
 		event.stopPropagation();
 	};
+	var type;
+	try {
+		type = viewExpr({expr:Candid.enhash(Candid.typecheck(expr, ctx)), ctx:ctx});
+	} catch (e) {
+		type = e.kind;
+	}
 	return E('tr', { onClick: click },
 		E('td', {}, viewExpr({expr:expr, ctx:ctx})),
 		E('td', {}, ':'),
-		E('td', {}, viewExpr({expr:Candid.enhash(Candid.typecheck(expr, ctx)), ctx:ctx})),
+		E('td', {}, type),
 	);
 };
 
