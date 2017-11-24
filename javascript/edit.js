@@ -521,10 +521,15 @@ var viewType = (expr) => {
 };
 
 var saveLink = (data, name) => {
-	var str = JSON.stringify(data);
+	var click = (event) => {
+		var str = JSON.stringify(data, null, '\t');
+		var blob = new Blob([str], { type:'application/json' });
+		event.target.href = URL.createObjectURL(blob);
+	};
 	return E('a', {
+		href: 'placeholder:',
+		onClick: click,
 		download: name + '.json',
-		href: 'data:text/json;charset=utf-8,' + encodeURIComponent(str),
 	}, "Save " + name);
 };
 
