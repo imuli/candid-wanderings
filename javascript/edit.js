@@ -520,7 +520,17 @@ var viewType = (expr) => {
 	}
 };
 
+var saveLink = (data, name) => {
+	var str = JSON.stringify(data);
+	return E('a', {
+		download: name + '.json',
+		href: 'data:text/json;charset=utf-8,' + encodeURIComponent(str),
+	}, "Save " + name);
+};
+
 var view = () => E('div', {className:'edit'},
+	saveLink(Candid._store, "store"),
+	saveLink(state.expr, "expression"),
 	viewType(state.expr),
 	E('div', {}, exprEdit(['edit'], state.expr)),
 );
