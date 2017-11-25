@@ -238,6 +238,75 @@ of type inference and implicit arguments, but it'll be magic you can look at,
 magic you can change by tweaking your editor, not the compiler, transparent
 magic, magic revealed, candid magic.
 
+### Structurally Equivalent Types
+
+One of the boons of using de Bruijn indices is that we get α-equivalence for
+free. That is, checking whether two expressions have the same structure,
+disregarding names. This also means that:
+
+```idris
+data Ordering = LT | EQ | GT
+```
+
+is exactly the same as
+
+```idris
+data Axis = X | Y | Z
+```
+
+and any other enumerated type with three values:
+
+```
+Ternary = * ⇒ 0 ⇒ 1 ⇒ 2 ⇒ 3
+Zero = * → 0 → 1 → 2 → 2
+One = * → 0 → 1 → 2 → 1
+Two = * → 0 → 1 → 2 → 0
+```
+
+This means that our type checker loses the power to distinguish between `Axis`
+and `Ordering`.  There are a number of ways to regain this power, and one
+requires nothing extra from the language, introducing a singleton into the type.
+
+There are an infinite number of singleton types. `* ⇒ 0 ⇒ 1` is the simplest and
+most obvious, but `* ⇒ * ⇒ 1 ⇒ 2` is much the same. While one could go on
+forever just adding intermediate type arguments, consider the type:
+
+```
+* ⇒ * ⇒ * ⇒ * ⇒ (4 ⇒ 3 ⇒ 2 ⇒ 4 ⇒ 6) ⇒ 1 ⇒ 2
+```
+
+So long as the arguments to the function and the value argument are not all of
+the same type, there is obviously only one possible function with that type, in
+this case:
+
+```
+* → * → * → * → (4 ⇒ 3 ⇒ 2 ⇒ 4 ⇒ 6) → 1 → 0
+```
+
+With $n$ type arguments and $m$ arguments to the function, this yields
+$n^{m+2}-n$ unique singleton types, 4092 for the model above.
+
+So to make a type unique, one simply prepends a unique singleton type.
+
+```
+Axis = (* ⇒ * ⇒ * ⇒ * ⇒ (4 ⇒ 3 ⇒ 2 ⇒ 4 ⇒ 6) ⇒ 1 ⇒ 2) ⇒ * ⇒ 0 ⇒ 1 ⇒ 2 ⇒ 3
+X = (* ⇒ * ⇒ * ⇒ * ⇒ (4 ⇒ 3 ⇒ 2 ⇒ 4 ⇒ 6) ⇒ 1 ⇒ 2) → * → 0 → 1 → 2 → 2
+```
+
+As there is only one possible value for the singleton type, it can be filled in
+automatically (and hidden) by a sufficiently smart editor. During type checking
+this will ensure that `X` isn't used in place of `LT` or vice versa, and it will
+be optimized away with partial evaluation during compilation, producing the
+exact same code as `Axis = *  ⇒ 0 ⇒ 1 ⇒ 2 ⇒ 3`.
+
+Note this also allows one to specify a function:
+
+```
+(* ⇒ 0 ⇒ 1 ⇒ 2 ⇒ 2) → (* ⇒ * ⇒ * ⇒ * ⇒ (4 ⇒ 3 ⇒ 2 ⇒ 4 ⇒ 6) ⇒ 1 ⇒ 2) → 1
+```
+
+which turns an `Ordering` into an `Axis`, much like the lone constructor in Haskell's `newtype`.
+
 ### Complier
 
 * partial evaluation / specialization
