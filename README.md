@@ -307,6 +307,60 @@ Note this also allows one to specify a function:
 
 which turns an `Ordering` into an `Axis`, much like the lone constructor in Haskell's `newtype`.
 
+### Programs for Free
+
+Consider the type `Map`, which is the type of a `map` function for the type `m`:
+
+```
+Map = m:(★ ⇒ ★) → t:★ ⇒ s:★ ⇒ fun:(t ⇒ s) ⇒ val:(m t) ⇒ m s
+```
+
+For each type `m` there will be a few possible programs that satisfy that type.
+For instance given the type `Maybe` and it's constructors `Nothing` and `Just`:
+
+```
+Maybe = t:★ → ★
+	s:★ ⇒ nothing:s ⇒ just:(t ⇒ s) ⇒ s
+Nothing = t:★ → Maybe t
+	s:★ → nothing:s → just:(t ⇒ s) → nothing
+Just = t:★ → x:t → Maybe t
+	s:★ → nothing:s → just:(t ⇒ s) → just x
+```
+
+Our `map` function will have the type `Map Maybe`:
+
+```
+Map Maybe = ★
+	t:★ ⇒ s:★ ⇒ fun:(t ⇒ s) ⇒ val:(Maybe t) ⇒ Maybe s
+```
+
+We need a `Maybe s`, which we can get via `Nothing s` and `Just s y`, where `y`
+is of type `s`. so one obvious (and wrong) option is:
+
+```
+map' = t:★ → s:★ → fun:(t ⇒ s) → val:(Maybe t) → Maybe s
+	Nothing s
+```
+
+However we also have `fun:(t ⇒ s)` and `val:(Maybe t)`. Either `val` is a
+`Nothing t`, in which case our only option is to use `Nothing s`, or it is a
+`Just t x`, in which case we have have two options, `Nothing s` and `(x:t → Just
+s (fun x))`. This points to the actual `map` function between `Maybe`s:
+
+```
+map = t:★ → s:★ → fun:(t ⇒ s) → val:(Maybe t) → Maybe s
+	val (Maybe s) (Nothing s) (x:t → Just s (fun x))
+```
+
+The heuristic here is to prefer solutions that use more arguments. If the type
+specifies that we take an argument, we probably want to use it in our program.
+Note that, as all of this takes place in the editor, it is just as easy to
+present the user with ten suggestions as one. The heuristic can just be used to
+order the suggestions. On the other hand, if there is only one possible program
+with a particular type, the editor could just fill it in.
+
+Sometimes though, there are more than just a few options.
+
 ### Complier
 
 * partial evaluation / specialization
