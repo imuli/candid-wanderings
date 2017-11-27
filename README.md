@@ -361,6 +361,27 @@ with a particular type, the editor could just fill it in.
 
 Sometimes though, there are more than just a few options.
 
+```
+List = t:★ → ★
+	r:★ ⇒ nil:r ⇒ cons:(r ⇒ t ⇒ r) ⇒ r
+Nil = t:★ → List t
+	r:★ → nil:r → cons:(r ⇒ t ⇒ r) → nil
+Cons = t:★ → a:t → list:(List t) → List t
+	r:★ → nil:r → cons:(r ⇒ t ⇒ r) → cons (list r nil cons) a
+```
+
+The type `t:★ ⇒ xs:(List t) ⇒ List t` has countably infinite different
+inhabitants. At the simplest there are `Nil t` and `xs`, for a little more
+effort any other duplication and/or permutation of `xs` works too. Thus we
+cannot present every solution - rather we must take the first few results of a
+breadth first search for solutions.
+
+Note that if there are infinite inhabitants of `List t ⇒ List t` than there are
+likewise infinite inhabitants of `List t ⇒ List s`. Note also that there are
+infinite programs equivalent to any other program, simply by encapsulating the
+program in an `id`. A properly defined breadth first search will relegate those
+solutions to later on, where they will usually not even be enumerated.
+
 ### Complier
 
 * partial evaluation / specialization
