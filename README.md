@@ -307,6 +307,33 @@ Note this also allows one to specify a function:
 
 which turns an `Ordering` into an `Axis`, much like the lone constructor in Haskell's `newtype`.
 
+### Type Inference
+
+
+If there is a hole in the expression, it is helpful to be able to infer the type
+of the expressions that fit in the hole. Though we call this type inference, it
+takes place in the editor rather than the complier and charges or improvements
+do not change any already written programs.
+
+We start with an expression and a path to the sub-expression which we want to
+infer the type of, and an expected output type. In general we follow the path,
+changing the expected output type based on the root of our current expression.
+
+* `Pi` expects a type for both arguments.
+* `Lam` expects a type for it's type and anything for the body.
+* `Type` expects a type for it's type and that type for it's body.
+* `App` is a little more complicated. The type of the function must be a `Pi`
+  from the type of the argument to the expected type. So if we're looking for
+  that we need to figure out the type of the argument first. Conversely to infer
+  the type of the argument we need to determine the type of the function, and we
+  expect that function's input type.
+
+When we reach the end of the path we simply return the expected type. Thus our
+result can be anything, any type, a value of some type, or a Pi from one of
+those to another. with this type pattern we can match or generate expression
+to fit in the hole.
+
+
 ### Programs for Free
 
 Consider the type `Map`, which is the type of a `map` function for the type `m`:
