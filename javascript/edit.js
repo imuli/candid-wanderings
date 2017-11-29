@@ -389,7 +389,7 @@ var exprEdit = (path, expr, ctx, paren) => {
 		event.stopPropagation();
 	};
 
-	var p = paren ? (x) => E('span', {className:'candid-paren'}, '(', x, ')') : (x) => x;
+	var p = (level, x) => level <= paren ? E('span', {className:'candid-paren'}, '(', x, ')') : x;
 
 	var ed = (props, ...children) => E('span',
 		Object.assign({ className: 'candid-' + expr.kind,
@@ -425,32 +425,32 @@ var exprEdit = (path, expr, ctx, paren) => {
 					state.expr = Candid.update(state.expr, path.slice(0,-1), entry.expr);
 					return exprEdit(path, entry.expr, ctx, paren);
 			}
-		case 'app': return p(ed({},
+		case 'app': return p(2, ed({},
 			expr.name || state.focus.join('!') == id+'!name' ?
 				stringEdit([...path, 'name'], expr.name) : null,
 			expr.name ? E('span', {className:'candid-equals'}, '=') : '',
-			exprEdit([...path, 'func'], expr.func, ctx, false),
+			exprEdit([...path, 'func'], expr.func, ctx, 1),
 			' ',
-			exprEdit([...path, 'arg'], expr.arg, ctx, true),
+			exprEdit([...path, 'arg'], expr.arg, ctx, 2),
 		));
 		case 'pi':
-		case 'lam': return p(ed({},
+		case 'lam': return p(1, ed({},
 			expr.name || state.focus.join('!') == id+'!name' ?
 				stringEdit([...path, 'name'], expr.name) : null,
 			expr.name ? E('span', {className:'candid-equals'}, '=') : '',
 			stringEdit([...path, 'argname'], expr.argname),
 			expr.argname ? ' : ' : '',
-			exprEdit([...path, 'type'], expr.type, ctx, true),
+			exprEdit([...path, 'type'], expr.type, ctx, 1),
 			E('span', {className:'candid-arrow'}, expr.kind == 'lam' ? '→' : '⇒'),
-			exprEdit([...path, 'body'], expr.body, [expr, ...ctx], false),
+			exprEdit([...path, 'body'], expr.body, [expr, ...ctx], 0),
 		));
-		case 'type': return p(ed({},
+		case 'type': return p(1, ed({},
 			expr.name || state.focus.join('!') == id+'!name' ?
 				stringEdit([...path, 'name'], expr.name) : null,
 			expr.name ? E('span', {className:'candid-equals'}, '=') : '',
-			exprEdit([...path, 'type'], expr.type, ctx, false),
+			exprEdit([...path, 'type'], expr.type, ctx, 0),
 			E('br',{}),
-			exprEdit([...path, 'body'], expr.body, ctx, false),
+			exprEdit([...path, 'body'], expr.body, ctx, 0),
 		));
 	}
 
