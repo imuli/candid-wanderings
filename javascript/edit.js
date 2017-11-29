@@ -428,7 +428,7 @@ var exprEdit = (path, expr, ctx, paren) => {
 		case 'app': return p(2, ed({},
 			expr.name || state.focus.join('!') == id+'!name' ?
 				stringEdit([...path, 'name'], expr.name) : null,
-			expr.name ? E('span', {className:'candid-equals'}, '=') : '',
+			expr.name ? E('span', {className:'candid-equals'}, ' = ') : '',
 			exprEdit([...path, 'func'], expr.func, ctx, 1),
 			' ',
 			exprEdit([...path, 'arg'], expr.arg, ctx, 2),
@@ -437,17 +437,17 @@ var exprEdit = (path, expr, ctx, paren) => {
 		case 'lam': return p(1, ed({},
 			expr.name || state.focus.join('!') == id+'!name' ?
 				stringEdit([...path, 'name'], expr.name) : null,
-			expr.name ? E('span', {className:'candid-equals'}, '=') : '',
+			expr.name ? E('span', {className:'candid-equals'}, ' = ') : '',
 			stringEdit([...path, 'argname'], expr.argname),
 			expr.argname ? ' : ' : '',
 			exprEdit([...path, 'type'], expr.type, ctx, 1),
-			E('span', {className:'candid-arrow'}, expr.kind == 'lam' ? '→' : '⇒'),
+			E('span', {className:'candid-arrow'}, expr.kind == 'lam' ? ' → ' : ' ⇒ '),
 			exprEdit([...path, 'body'], expr.body, [expr, ...ctx], 0),
 		));
 		case 'type': return p(1, ed({},
 			expr.name || state.focus.join('!') == id+'!name' ?
 				stringEdit([...path, 'name'], expr.name) : null,
-			expr.name ? E('span', {className:'candid-equals'}, '=') : '',
+			expr.name ? E('span', {className:'candid-equals'}, ' = ') : '',
 			exprEdit([...path, 'type'], expr.type, ctx, 0),
 			E('br',{}),
 			exprEdit([...path, 'body'], expr.body, ctx, 0),
