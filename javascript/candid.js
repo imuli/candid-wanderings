@@ -180,7 +180,7 @@ var Candid = (() => {
 				if(!ceq(reduce(unhash(at)), ft.type, [], [])){
 					throw { kind: 'Type Mismatch', ctx: ctx, exp: e, et: ft.type, at: at };
 				}
-				e._type = reduce(replace(e.arg, ft, ft.body), true);
+				e._type = reduce(replace(e.arg, ft, ft.body));
 				break;
 		case 'pi':
 				var itt = typecheck(e.type, ctx);
