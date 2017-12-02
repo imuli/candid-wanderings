@@ -505,7 +505,7 @@ var viewType = (expr) => {
 	try  {
 		var type = Candid.typecheck(expr);
 		type = Candid.enhash(type);
-		Candid.typecheck(type);
+		try { Candid.typecheck(type); } catch (e) {};
 		return E('div', { className: 'candid-typecheck' }, viewExpr({expr:type, ctx:[]}));
 	} catch (e) {
 		console.warn(e);
