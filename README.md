@@ -309,7 +309,6 @@ which turns an `Ordering` into an `Axis`, much like the lone constructor in Hask
 
 ### Type Inference
 
-
 If there is a hole in the expression, it is helpful to be able to infer the type
 of the expressions that fit in the hole. Though we call this type inference, it
 takes place in the editor rather than the complier and charges or improvements
@@ -332,7 +331,6 @@ When we reach the end of the path we simply return the expected type. Thus our
 result can be anything, any type, a value of some type, or a Pi from one of
 those to another. with this type pattern we can match or generate expression
 to fit in the hole.
-
 
 ### Programs for Free
 
