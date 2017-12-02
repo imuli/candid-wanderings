@@ -332,6 +332,45 @@ result can be anything, any type, a value of some type, or a Pi from one of
 those to another. with this type pattern we can match or generate expression
 to fit in the hole.
 
+### What to do about Universes
+
+`□` is the type of `★` and `★ ⇒ ★` and the like - barring the use of values and
+value level functions from types. One cannot convert between a normal `Bool` and
+a type level `Bool` for instance:
+
+```
+Bool = t:★ ⇒ true:t ⇒ false:t ⇒ t
+True = t:★ → true:t → false:t → true
+False = t:★ → true:t → false:t → false
+
+Bool★ = true:★ ⇒ false:★ ⇒ ★
+True★ = true:★ → false:★ → true
+False★ = true:★ → false:★ → false
+
+<s>Bool★fromBool = bool:Bool → Bool★
+bool Bool★ True★ False★</s>
+```
+
+The hackish solution to this is to use `★` as the type of `★`. This opens up to
+Girard's Paradox though. The typical solution to have typing heirarchy starting
+with `★₀` such that `★ₙ : ★ₙ₊₁` - this requires extending the core calculus:
+
+```idris
+data Expr
+  = Lam (inType : Expr) (body : Expr)    -- inType → body
+  | Ref (n : Nat)                        -- n
+  | App (func : Expr) (arg : Expr)       -- func arg
+  | Pi (inType : Expr) (outType : Expr)  -- inType ⇒ outType
+  | Z                                    -- 0
+  | S (n : Expr)                         -- n+1
+  | N                                    -- ℕ (type of Z and S)
+  | Star (n : Expr)                      -- *
+```
+
+Thus we can rewrite `Bool` to `n:ℕ → t:★ₙ ⇒ true:t ⇒ false:f ⇒ t`, which has
+the type `n:ℕ ⇒ ★ₙ`, which has the type `n:ℕ ⇒ ★ₙ₊₁`. I am not sure what to
+think about this.
+
 ### Programs for Free
 
 Consider the type `Map`, which is the type of a `map` function for the type `m`:
