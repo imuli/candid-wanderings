@@ -70,7 +70,6 @@ data Expr
   | App (func : Expr) (arg : Expr)       -- func arg
   | Pi (inType : Expr) (outType : Expr)  -- inType ⇒ outType
   | Star                                 -- *
-  | Box                                  -- □
 ```
 
 * `Lam` encloses a function, apply an argument (type `inType`)
@@ -84,9 +83,8 @@ data Expr
 * `Pi` is the type of `Lam`, where `inType`s match
   and `outType` is the derived type of the `body`.
 
-* `Star` is the type of a `Pi`.
-
-* `Box` is the type of a `Star`.
+* `Star` represents a type, informally this includes the type of `Star` and
+  a `Pi` with an output of `Star` - though reality is more complicated.
 
 With these one may define functions:
 
@@ -334,42 +332,44 @@ to fit in the hole.
 
 ### What to do about Universes
 
-`□` is the type of `★` and `★ ⇒ ★` and the like - barring the use of values and
-value level functions from types. One cannot convert between a normal `Bool` and
-a type level `Bool` for instance:
+Informally, `★` is the type of `★` and `★ ⇒ ★` and the like. In reality, stars
+are paramaterized over natural numbers, such that the type of `★ₙ`  is `★ₙ₊₁`.
+This is to prevent inconsistancy due to Girard's Paradox.
+
+In the current implementations, `★` is either of type `□` or (paradoxically) of
+type `★`. Eventually there will be universe inference, which will result in some
+ultimately invalid programs that currently type check fail to type check.  This
+is the sole exception to Candid's forward compatibility guarentee - if there is
+a bug in Candid that results in an inconsistant logic, programs that depend on
+that bug will not work in future versions.
+
+The problem with `★` is having of type `□` is that one cannot use the
+conventional definition of `Bool` as a dependant type, and cannot even convert a
+value `Bool` to a type-level `Bool`:
 
 ```
 Bool = t:★ ⇒ true:t ⇒ false:t ⇒ t
 True = t:★ → true:t → false:t → true
 False = t:★ → true:t → false:t → false
 
+<s>x:Bool ⇒ x ★ Bool Nat</s>
+
 Bool★ = true:★ ⇒ false:★ ⇒ ★
 True★ = true:★ → false:★ → true
 False★ = true:★ → false:★ → false
 
-<s>Bool★fromBool = bool:Bool → Bool★
-bool Bool★ True★ False★</s>
+<s>Bool★fromBool = bool:Bool → bool Bool★ True★ False★</s>
 ```
 
-The hackish solution to this is to use `★` as the type of `★`. This opens up to
-Girard's Paradox though. The typical solution to have typing heirarchy starting
-with `★₀` such that `★ₙ : ★ₙ₊₁` - this requires extending the core calculus:
+With universe inference it just looks like this:
 
-```idris
-data Expr
-  = Lam (inType : Expr) (body : Expr)    -- inType → body
-  | Ref (n : Nat)                        -- n
-  | App (func : Expr) (arg : Expr)       -- func arg
-  | Pi (inType : Expr) (outType : Expr)  -- inType ⇒ outType
-  | Z                                    -- 0
-  | S (n : Expr)                         -- n+1
-  | N                                    -- ℕ (type of Z and S)
-  | Star (n : Expr)                      -- *
 ```
+Boolₙ = t:★ₙ ⇒ true:t ⇒ false:t ⇒ t
+Trueₙ = t:★ₙ → true:t → false:t → true
+Falseₙ = t:★ₙ → true:t → false:t → false
 
-Thus we can rewrite `Bool` to `n:ℕ → t:★ₙ ⇒ true:t ⇒ false:f ⇒ t`, which has
-the type `n:ℕ ⇒ ★ₙ`, which has the type `n:ℕ ⇒ ★ₙ₊₁`. I am not sure what to
-think about this.
+x:Boolₙ₊₊ ⇒ x ★ₙ Boolₙ Natₙ
+```
 
 ### Programs for Free
 
