@@ -47,7 +47,6 @@ var viewExpr = ({expr, ctx, paren}) => {
 		ctx = [];
 	switch(expr.kind){
 	case 'star': return view('★');
-	case 'box': return view('□');
 	case 'hole': return view('_');
 	case 'hash':
 			var entry = Candid.fetch(expr.hash);

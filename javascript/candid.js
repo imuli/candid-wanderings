@@ -9,7 +9,6 @@ var Candid = (() => {
 		var indent = (s) => s.replace(/\n/g, '\n  ');
 		switch(e.kind){
 		case 'star': return '*';
-		case 'box': return '□';
 		case 'hole': return '_';
 		case 'type': return ': ' + indent(pretty(e.type)) + indent('\n' + pretty(e.body));
 		case 'hash': return toId(e.hash)
@@ -27,7 +26,6 @@ var Candid = (() => {
 	var compile = r.compile = (e, depth) => {
 		switch(e.kind) {
 		case 'star': return "(()=>$star$)";
-		case 'box': return "(()=>$box$)";
 		case 'hole': return "(()=>$hole$)";
 		case 'type': return compile(e.body, depth);
 		case 'hash': return toId(e.hash);
@@ -122,7 +120,7 @@ var Candid = (() => {
 	// copy notes from e to r (usually it's replacement)
 	// like r.note = e.note, but better
 	var copynotes = (r,e) => {
-		if(r == Star || r == Box || r.kind == 'hole') return r; // constants don't get notes
+		if(r == Star || r.kind == 'hole') return r; // constants don't get notes
 		if(r.note == e.note) return r;
 		r.note = r.note === undefined ? e.note : e.note === undefined ? r.note : e.note + '\n' + r.note;
 		return r;
@@ -133,8 +131,7 @@ var Candid = (() => {
 		if(e._type !== undefined) return e._type;
 		if(ctx === undefined) ctx = [];
 		switch(e.kind) {
-		case 'star': return Box;
-		case 'box': throw { kind: 'Untyped Box', ctx: ctx};
+		case 'star': return Star;
 		case 'hole': return e;
 		case 'type': // FIXME how to detect intermediate function application?
 				var output_type = e.type;
@@ -184,10 +181,10 @@ var Candid = (() => {
 				break;
 		case 'pi':
 				var itt = typecheck(e.type, ctx);
-				if(itt.kind != 'star' && itt.kind != 'box')
+				if(itt.kind != 'star')
 					throw { kind: 'Invalid Input Type', ctx: ctx, exp: e, at: itt };
 				var ott = typecheck(e.body, [e, ...ctx]);
-				if(ott.kind != 'star' && ott.kind != 'box'){
+				if(ott.kind != 'star'){
 					throw { kind: 'Invalid Output Type', ctx: ctx, exp: e, at: ott };
 				}
 				e._type = ott;
@@ -246,7 +243,6 @@ var Candid = (() => {
 		if(e.hash !== undefined) return e.hash;
 		switch(e.kind) {
 		case 'star': e.hash = blake2s1.hash(zero, [-1,0,0,1],[]); break;
-		case 'box': e.hash = blake2s1.hash(zero, [-1,0,0,-1],[]); break;
 		case 'hole': e.hash = blake2s1.hash(zero, [-1,0,0,0],[]); break;
 		case 'type': e.hash = hash(e.body); break; // FIXME _can_ this change the expression?
 		case 'hash': e.hash = e.hash; break; // never get here anyway
@@ -265,7 +261,6 @@ var Candid = (() => {
 		if(e.closed !== undefined) return e.closed;
 		switch(e.kind){
 		case 'star': return -1;
-		case 'box': return -1;
 		case 'hole': return -1;
 		case 'type': e.closed = Math.max(closed(e.type), closed(e.body)); return e.closed;
 		case 'hash': return -1;
@@ -282,7 +277,6 @@ var Candid = (() => {
 	var hasRec = (e, depth) => {
 		switch(e.kind){
 		case 'star': return false;
-		case 'box': return false;
 		case 'hole': return false;
 		case 'type': return hasRec(e.type, depth) || hasRec(e.body, depth);
 		case 'hash': return false;
@@ -346,7 +340,6 @@ var Candid = (() => {
 		case 'hash':
 		case 'ref':
 		case 'rec': return e;
-		case 'box':
 		case 'hole': throw 'Attempted to store ' + e.kind + '.';
 		case 'type':
 				var type = store(e.type);
@@ -435,7 +428,6 @@ var Candid = (() => {
 		case 'star':
 		case 'ref':
 		case 'rec':
-		case 'box':
 		case 'hole':
 				break;
 		case 'hash':
@@ -477,7 +469,6 @@ var Candid = (() => {
 		case 'star':
 		case 'ref':
 		case 'rec':
-		case 'box':
 		case 'hole':
 		case 'hash':
 				break;
@@ -577,7 +568,6 @@ var Candid = (() => {
 	var toUTF16 = r.toUTF16 = (e) => {
 		switch(e.kind){
 		case 'star': return '*';
-		case 'box':  return '□';
 		case 'hole': return '_';
 		case 'type': return ':' + toUTF16(e.type) + toUTF16(e.body);
 		case 'hash': return '#' + hashToUTF16(e.hash)
@@ -597,7 +587,6 @@ var Candid = (() => {
 		st.offset++;
 		switch(c){
 		case '*': return Star;
-		case '□': return Box;
 		case '_': return Hole();
 		case ':': return Type(fromUTF16(s,st), fromUTF16(s,st));
 		case '#': return Hash(hashFromUTF16(s, st));
@@ -695,7 +684,6 @@ var Candid = (() => {
 	// these are not the only way to build expressions!
 	// and do not perscribe which values may take which arguments
 	// in particular, all values will eventually have `hash` may have a `note`
-	var Box  = r.Box  = ({ kind: 'box' });
 	var Hole = r.Hole = (h) => ({ kind: 'hole', hold: h });
 	var Star = r.Star = ({ kind: 'star' });
 	var Ref  = r.Ref  = (n) => ({ kind: 'ref', value: n });
