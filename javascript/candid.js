@@ -242,20 +242,18 @@ var Candid = (() => {
 	var zero = r.hash0 = [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
 	var hash = r.hash = (e) => {
 		// cache hashes
-		if(e.hash !== undefined) return e.hash;
 		switch(e.kind) {
-		case 'star': e.hash = blake2s1.hash(zero, [-1,0,0,1],[]); break;
-		case 'hole': e.hash = blake2s1.hash(zero, [-1,0,0,0],[]); break;
-		case 'type': e.hash = blake2s1.hash(hash(e.type).concat(hash(e.body)),[0,0,1,0],[]); break;
-		case 'hash': e.hash = e.hash; break; // never get here anyway
-		case 'ref': e.hash = blake2s1.hash(zero, [1,0,0,e.value],[]); break; // TODO? these two
-		case 'rec': e.hash = blake2s1.hash(zero, [2,0,0,e.value],[]); break; // could be cached
-		case 'app': e.hash = blake2s1.hash(hash(e.func).concat(hash(e.arg)),[0,0,0,1],[]); break;
-		case 'pi': e.hash = blake2s1.hash(hash(e.type).concat(hash(e.body)),[0,0,0,3],[]); break;
-		case 'lam': e.hash = blake2s1.hash(hash(e.type).concat(hash(e.body)),[0,0,0,2],[]); break;
+		case 'star': return blake2s1.hash(zero, [-1,0,0,1],[]);
+		case 'hole': return blake2s1.hash(zero, [-1,0,0,0],[]);
+		case 'type': return blake2s1.hash(hash(e.type).concat(hash(e.body)),[0,0,1,0],[]);
+		case 'hash': return e.hash;
+		case 'ref': return blake2s1.hash(zero, [1,0,0,e.value],[]);
+		case 'rec': return blake2s1.hash(zero, [2,0,0,e.value],[]);
+		case 'app': return blake2s1.hash(hash(e.func).concat(hash(e.arg)),[0,0,0,1],[]);
+		case 'pi': return blake2s1.hash(hash(e.type).concat(hash(e.body)),[0,0,0,3],[]);
+		case 'lam': return blake2s1.hash(hash(e.type).concat(hash(e.body)),[0,0,0,2],[]);
 		default: throw "Type Error";
 		}
-		return e.hash;
 	};
 
 	// return the depth of πs and λs this expression must be closed within
@@ -312,7 +310,6 @@ var Candid = (() => {
 		if(path.length == 0) return repl;
 		expr[path[0]] = _update(expr[path[0]], path.slice(1), repl);
 		delete(expr.closed)
-		if(expr.kind != 'hash') delete(expr.hash)
 		return expr;
 	}
 
