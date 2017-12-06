@@ -244,7 +244,7 @@ var Candid = (() => {
 		switch(e.kind) {
 		case 'star': e.hash = blake2s1.hash(zero, [-1,0,0,1],[]); break;
 		case 'hole': e.hash = blake2s1.hash(zero, [-1,0,0,0],[]); break;
-		case 'type': e.hash = hash(e.body); break; // FIXME _can_ this change the expression?
+		case 'type': e.hash = blake2s1.hash(hash(e.type).concat(hash(e.body)),[0,0,1,0],[]); break;
 		case 'hash': e.hash = e.hash; break; // never get here anyway
 		case 'ref': e.hash = blake2s1.hash(zero, [1,0,0,e.value],[]); break; // TODO? these two
 		case 'rec': e.hash = blake2s1.hash(zero, [2,0,0,e.value],[]); break; // could be cached
