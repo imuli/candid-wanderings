@@ -422,7 +422,7 @@ var exprEdit = (path, expr, ctx, paren) => {
 				case !!name:
 					return ed({}, name);
 				default:
-					state.expr = Candid.update(state.expr, path.slice(1,-1), entry.expr);
+					state.expr = Candid.update(state.expr, path.slice(1), entry.expr);
 					return exprEdit(path, entry.expr, ctx, paren);
 			}
 		case 'app': return p(2, ed({},
