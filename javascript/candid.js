@@ -11,7 +11,9 @@ var Candid = (() => {
 		case 'star': return '*';
 		case 'hole': return '_';
 		case 'type': return ': ' + indent(pretty(e.type)) + indent('\n' + pretty(e.body));
-		case 'hash': return toId(e.hash)
+		case 'hash':
+				var entry = Candid.fetch(e.hash);
+				return entry ? entry.name ? entry.name : pretty(entry.expr) : toId(e.hash);
 		case 'ref': return e.value.toString();
 		case 'rec': return '@' + e.value.toString();
 		case 'app': return '$ ' + indent(pretty(e.func)) + indent('\n' + pretty(e.arg));
