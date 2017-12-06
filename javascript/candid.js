@@ -144,7 +144,7 @@ var Candid = (() => {
 					output_type = ctx[i].output_type;
 				}
 				var type = typecheck(e.body, ctx);
-				if(!ceq(reduce(unhash(type)), reduce(unhash(e.type), true), [], []))
+				if(!ceq(reduce(unhash(type), true), reduce(unhash(e.type), true), [], []))
 					throw { kind: 'Failed Type Assertion', ctx: ctx, et: e.type, at: type };
 				e._type = e.type;
 				break;
@@ -169,12 +169,12 @@ var Candid = (() => {
 				}
 				break;
 		case 'app':
-				var ft = reduce(unhash(typecheck(e.func, ctx)));
+				var ft = reduce(unhash(typecheck(e.func, ctx)), true);
 				if(ft.kind != 'pi'){
 					throw { kind: 'Not a Function', ctx: ctx, exp: e, ft: ft };
 				}
 				var at = typecheck(e.arg, ctx);
-				if(!ceq(reduce(unhash(at)), ft.type, [], [])){
+				if(!ceq(reduce(unhash(at), true), ft.type, [], [])){
 					throw { kind: 'Type Mismatch', ctx: ctx, exp: e, et: ft.type, at: at };
 				}
 				e._type = reduce(replace(e.arg, ft, ft.body));
