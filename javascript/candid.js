@@ -71,12 +71,11 @@ var Candid = (() => {
 				break;
 		case 'app':
 				var func = reduce(e.func, r);
-				// reducing arguments recursively causes infinite loops
-				var arg = reduce(e.arg, false);
+				var arg = reduce(e.arg, r);
 				// only β-reduce when reducing recursively
 				// or there are no recurs to this lambda
 				if(func.kind == 'lam' && (r || !hasRec(func.body,0))){
-					red = reduce(replace(arg, func, func.body), r);
+					red = reduce(replace(arg, func, func.body), false);
 				}else{
 					if(!(eq(func, e.func) && eq(arg, e.arg)))
 						red = App(func, arg, e.name);
@@ -215,11 +214,13 @@ var Candid = (() => {
 		switch(e0.kind){
 			case 'hash': return ceq(unwrap(e0), e1, p0, p1);
 			case 'type': return ceq(e0.body, e1, p0, p1);
+			case 'app': return ceq(replace(e0.arg, e0.func, e0.func.body), e1, p0, p1);
 			case 'rec': return p0.length <= e0.value ? false : ceq(p0[e0.value], e1, p0.slice(e0.value), p1);
 		};
 		switch(e1.kind){
 			case 'hash': return ceq(e0, unwrap(e1), p0, p1);
 			case 'type': return ceq(e0, e1.body, p0, p1);
+			case 'app': return ceq(e0, replace(e1.arg, e1.func, e1.func.body), p0, p1);
 			case 'rec': return p1.length <= e1.value ? false : ceq(e0, p1[e1.value], p0, p1.slice(e1.value));
 		};
 		return false;
