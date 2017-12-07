@@ -42,7 +42,7 @@ var colorExpr = (expr, ctx) => {
 
 var viewExpr = ({expr, ctx, paren}) => {
 	var view = (sym, style) => E('span', {className:'candid-' + expr.kind, style: style}, sym);
-	var p = paren ? (x) => E('span', {className:'candid-paren'}, '(', x, ')') : (x) => x;
+	var p = (level, x) => level <= paren ? E('span', {className:'candid-paren'}, '(', x, ')') : x;
 	if(Candid.closed(expr) < 0)
 		ctx = [];
 	switch(expr.kind){
@@ -63,24 +63,24 @@ var viewExpr = ({expr, ctx, paren}) => {
 	case 'rec':
 			var n = ctx[expr.value] === undefined ? undefined : ctx[expr.value].name;
 			return view(n === undefined ? '@'+expr.value : n, colorExpr(expr._type, ctx));
-	case 'type': return p(E('span', {className:'candid-type'},
-		viewExpr({expr:expr.type, ctx:ctx, paren:true}),
+	case 'type': return p(1, E('span', {className:'candid-type'},
+		viewExpr({expr:expr.type, ctx:ctx, paren:0}),
 		' | ',
-		viewExpr({expr:expr.body, ctx:ctx, paren:false}) ));
-	case 'app': return p(E('span', {className:'candid-app'},
+		viewExpr({expr:expr.body, ctx:ctx, paren:0}) ));
+	case 'app': return p(2, E('span', {className:'candid-app'},
 		expr.name ? E('span',{style:colorExpr(expr._type, ctx)}, expr.name) : '',
 		expr.name ? ' = ' : '',
-		viewExpr({expr:expr.func, ctx:ctx, paren:false}),
+		viewExpr({expr:expr.func, ctx:ctx, paren:1}),
 		' ',
-		viewExpr({expr:expr.arg, ctx:ctx, paren:true}) ));
+		viewExpr({expr:expr.arg, ctx:ctx, paren:2}) ));
 	case 'pi':
-	case 'lam': return p(E('span', {className:'candid-' + expr.kind},
+	case 'lam': return p(1, E('span', {className:'candid-' + expr.kind},
 		expr.name ? E('span',{style:colorExpr(expr._type, ctx)}, expr.name) : '',
 		expr.name ? ' = ' : '',
 		expr.argname ? E('span',{style:colorExpr(expr.type, ctx)}, expr.argname) : '',
 		expr.argname ? ' : ' : '',
-		viewExpr({expr:expr.type, ctx:ctx, paren:true}),
+		viewExpr({expr:expr.type, ctx:ctx, paren:1}),
 		expr.kind == 'lam' ? ' → ' : ' ⇒ ',
-		viewExpr({expr:expr.body, ctx:[expr, ...ctx], paren:false}) ));
+		viewExpr({expr:expr.body, ctx:[expr, ...ctx], paren:0}) ));
 	};
 };
