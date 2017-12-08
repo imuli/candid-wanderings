@@ -137,10 +137,15 @@ var Candid = (() => {
 		case 'type': // FIXME how to detect intermediate function application?
 				var output_type = e.type;
 				for(var i = 0; i < ctx.length; i++){
-					if(ctx[i].kind == 'lam'){
-						ctx[i].output_type = shift(-i, Pi(ctx[i].type, shift(1, output_type)));
-					} else {
-						throw 'FIXME - Type assertion within ' + ctx[i].kind;
+					switch(ctx[i].kind){
+						case 'lam':
+							ctx[i].output_type = shift(-i, Pi(ctx[i].type, shift(1, output_type)));
+							break;
+						case 'pi':
+							ctx[i].output_type = Star;
+							break;
+						default:
+							throw 'FIXME - Type assertion within ' + ctx[i].kind;
 					}
 					output_type = ctx[i].output_type;
 				}
