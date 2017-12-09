@@ -45,13 +45,18 @@ var viewExpr = ({expr, ctx, paren}) => {
 	var p = (level, x) => level <= paren ? E('span', {className:'candid-paren'}, '(', x, ')') : x;
 	if(Candid.closed(expr) < 0)
 		ctx = [];
+	var type;
+	try {
+		type = Candid.typecheck(expr, ctx);
+	} catch (e) {
+		type = undefined;
+	}
 	switch(expr.kind){
-	case 'star': return view('★');
-	case 'hole': return view('_');
+	case 'star': return view('★', colorExpr(type, ctx));
+	case 'hole': return view('_', colorExpr(type, ctx));
 	case 'hash':
 			var entry = Candid.fetch(expr.hash);
 			var name = entry ? entry.name : expr.name;
-			var type = entry ? entry.type : expr._type;
 			if(name)
 				return view(name, colorExpr(type, []));
 			if(entry)
@@ -59,23 +64,23 @@ var viewExpr = ({expr, ctx, paren}) => {
 			return Candid.toId(expr.hash);
 	case 'ref':
 			var n = ctx[expr.value] === undefined ? undefined : ctx[expr.value].argname;
-			return view(n === undefined ? expr.value : n, colorExpr(expr._type, ctx));
+			return view(n === undefined ? expr.value : n, colorExpr(type, ctx));
 	case 'rec':
 			var n = ctx[expr.value] === undefined ? undefined : ctx[expr.value].name;
-			return view(n === undefined ? '@'+expr.value : n, colorExpr(expr._type, ctx));
+			return view(n === undefined ? '@'+expr.value : n, colorExpr(type, ctx));
 	case 'type': return p(1, E('span', {className:'candid-type'},
 		viewExpr({expr:expr.type, ctx:ctx, paren:0}),
 		' | ',
 		viewExpr({expr:expr.body, ctx:ctx, paren:0}) ));
 	case 'app': return p(2, E('span', {className:'candid-app'},
-		expr.name ? E('span',{style:colorExpr(expr._type, ctx)}, expr.name) : '',
+		expr.name ? E('span',{style:colorExpr(type, ctx)}, expr.name) : '',
 		expr.name ? ' = ' : '',
 		viewExpr({expr:expr.func, ctx:ctx, paren:1}),
 		' ',
 		viewExpr({expr:expr.arg, ctx:ctx, paren:2}) ));
 	case 'pi':
 	case 'lam': return p(1, E('span', {className:'candid-' + expr.kind},
-		expr.name ? E('span',{style:colorExpr(expr._type, ctx)}, expr.name) : '',
+		expr.name ? E('span',{style:colorExpr(type, ctx)}, expr.name) : '',
 		expr.name ? ' = ' : '',
 		expr.argname ? E('span',{style:colorExpr(expr.type, ctx)}, expr.argname) : '',
 		expr.argname ? ' : ' : '',

@@ -129,7 +129,6 @@ var Candid = (() => {
 
 	// type check expression with parent context
 	var typecheck = r.typecheck = (e, ctx) => {
-		if(e._type !== undefined) return e._type;
 		if(ctx === undefined) ctx = [];
 		switch(e.kind) {
 		case 'star': return Star;
@@ -152,28 +151,24 @@ var Candid = (() => {
 				var type = typecheck(e.body, ctx);
 				if(!ceq(reduce(unhash(type), true), reduce(unhash(e.type), true), [], []))
 					throw { kind: 'Failed Type Assertion', ctx: ctx, et: e.type, at: type };
-				e._type = e.type;
-				break;
+				return e.type;
 		case 'hash':
-				e._type = unhash(fetch(e.hash, true).type);
-				break;
+				return unhash(fetch(e.hash, true).type);
 		case 'ref':
 				if(ctx.length <= e.value)
 					throw { kind: 'Open Expression', ctx: ctx, exp: e };
-				e._type = shift(e.value+1, ctx[e.value].type);
-				break;
+				return shift(e.value+1, ctx[e.value].type);
 		case 'rec':
 				if(ctx.length <= e.value)
 					throw { kind: 'Open Expression', ctx: ctx, exp: e };
 				var rctx = ctx[e.value];
 				if(rctx.output_type !== undefined) {
-					e._type = shift(e.value, rctx.output_type);
+					return shift(e.value, rctx.output_type);
 				} else if(rctx.kind === 'pi') {
-					e._type = Star;
+					return Star;
 				} else {
 					throw { kind: 'Type Inference', ctx: ctx, exp: e};
 				}
-				break;
 		case 'app':
 				var ft = reduce(unhash(typecheck(e.func, ctx)), true);
 				if(ft.kind != 'pi'){
@@ -183,8 +178,7 @@ var Candid = (() => {
 				if(!ceq(reduce(unhash(at), true), ft.type, [], [])){
 					throw { kind: 'Type Mismatch', ctx: ctx, exp: e, et: ft.type, at: at };
 				}
-				e._type = reduce(replace(e.arg, ft, ft.body));
-				break;
+				return reduce(replace(e.arg, ft, ft.body));
 		case 'pi':
 				var itt = typecheck(e.type, ctx);
 				if(itt.kind != 'star')
@@ -193,15 +187,13 @@ var Candid = (() => {
 				if(ott.kind != 'star'){
 					throw { kind: 'Invalid Output Type', ctx: ctx, exp: e, at: ott };
 				}
-				e._type = ott;
-				break;
+				return ott;
 		case 'lam':
 				typecheck(e.type, ctx);
 				var output_type = typecheck(e.body, [e, ...ctx]);
-				e._type = Pi(e.type, output_type, e.argname, undefined); // can't derive a name for the overall pi
-				break;
+				return Pi(e.type, output_type, e.argname, undefined); // can't derive a name for the overall pi
 		};
-		return e._type;
+		throw "Type Error";
 	};
 
 	// contextual equivalence
@@ -392,7 +384,6 @@ var Candid = (() => {
 			};
 		}
 		var s = Hash(h, _store[key].name);
-		s._type = type;
 		return s;
 	};
 
