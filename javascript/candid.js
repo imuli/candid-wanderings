@@ -127,27 +127,14 @@ var Candid = (() => {
 		return r;
 	};
 
-	// type check expression with parent context
-	var typecheck = r.typecheck = (e, ctx) => {
+	// type check expression within context
+	var typecheck = r.typecheck = (e, ctx, trust) => {
 		if(ctx === undefined) ctx = [];
 		switch(e.kind) {
 		case 'star': return Star;
 		case 'hole': return e;
-		case 'type': // FIXME how to detect intermediate function application?
-				var output_type = e.type;
-				for(var i = 0; i < ctx.length; i++){
-					switch(ctx[i].kind){
-						case 'lam':
-							ctx[i].output_type = shift(-i, Pi(ctx[i].type, shift(1, output_type)));
-							break;
-						case 'pi':
-							ctx[i].output_type = Star;
-							break;
-						default:
-							throw 'FIXME - Type assertion within ' + ctx[i].kind;
-					}
-					output_type = ctx[i].output_type;
-				}
+		case 'type':
+				if(trust) return e.type;
 				var type = typecheck(e.body, ctx);
 				if(!ceq(reduce(unhash(type), true), reduce(unhash(e.type), true), [], []))
 					throw { kind: 'Failed Type Assertion', ctx: ctx, et: e.type, at: type };
@@ -161,25 +148,21 @@ var Candid = (() => {
 		case 'rec':
 				if(ctx.length <= e.value)
 					throw { kind: 'Open Expression', ctx: ctx, exp: e };
-				var rctx = ctx[e.value];
-				if(rctx.output_type !== undefined) {
-					return shift(e.value, rctx.output_type);
-				} else if(rctx.kind === 'pi') {
-					return Star;
-				} else {
-					throw { kind: 'Type Inference', ctx: ctx, exp: e};
-				}
+				if(trust)
+					throw { kind: 'Type Inference', ctx: ctx, exp: e };
+				return typecheck(ctx[e.value], slice(e.value+1, ctx), true);
 		case 'app':
-				var ft = reduce(unhash(typecheck(e.func, ctx)), true);
+				var ft = reduce(unhash(typecheck(e.func, ctx, trust)), true);
 				if(ft.kind != 'pi'){
 					throw { kind: 'Not a Function', ctx: ctx, exp: e, ft: ft };
 				}
-				var at = typecheck(e.arg, ctx);
+				var at = typecheck(e.arg, ctx, trust);
 				if(!ceq(reduce(unhash(at), true), ft.type, [], [])){
 					throw { kind: 'Type Mismatch', ctx: ctx, exp: e, et: ft.type, at: at };
 				}
 				return reduce(replace(e.arg, ft, ft.body));
 		case 'pi':
+				if(trust) return Star;
 				var itt = typecheck(e.type, ctx);
 				if(itt.kind != 'star')
 					throw { kind: 'Invalid Input Type', ctx: ctx, exp: e, at: itt };
@@ -189,8 +172,8 @@ var Candid = (() => {
 				}
 				return ott;
 		case 'lam':
-				typecheck(e.type, ctx);
-				var output_type = typecheck(e.body, [e, ...ctx]);
+				typecheck(e.type, ctx, trust);
+				var output_type = typecheck(e.body, [e, ...ctx], trust);
 				return Pi(e.type, output_type, e.argname, undefined); // can't derive a name for the overall pi
 		};
 		throw "Type Error";
