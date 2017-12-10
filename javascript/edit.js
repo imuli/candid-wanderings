@@ -139,12 +139,12 @@ var hashEdit = (path, string) => {
 	var search;
 	if(state.focus.join('!') == path.join('!')){
 		var list = [];
+		var typePat = Candid.typeAt(path.slice(1, -1), state.expr);
 		var name = string.toLowerCase();
-		for(k in Candid._store){
+		for(var k in Candid._store){
 			var entry = Candid._store[k];
-			if(entry && entry.name){
+			if(entry && entry.name && (!entry.type || Candid.typeMatch(typePat, entry.type))){
 				var e = Candid.Hash(entry.hash, entry.name);
-				e._type = entry.type;
 				e._dist = entry.name.toLowerCase().indexOf(name);
 				if(e._dist < 0) e._dist = name.length;
 				e._dist += editDist(string, entry.name)/entry.name.length;
@@ -495,7 +495,6 @@ var storeList = () => {
 		var s = Candid._store[h];
 		if(!s) continue;
 		var e = Candid.Hash(s.hash, s.name);
-		e._type = s.type;
 		list.push(listEntry(e, []));
 	};
 	return E('table', { className: 'candid-list' }, ...list);

@@ -179,29 +179,71 @@ var Candid = (() => {
 		throw "Type Error";
 	};
 
+	var typeAt = r.typeAt = (path, expr, ctx, wish) => {
+		if(ctx === undefined) ctx = [];
+		if(wish === undefined) wish = Hole("");
+		if(path.length == 0) return wish;
+		var step = path[0];
+		var rest = path.slice(1);
+		switch(expr.kind + '|' + step){
+			case 'pi|type':
+			case 'lam|type':
+			case 'type|type':
+				return typeAt(rest, expr.type, ctx, Star);
+			case 'pi|body':
+				return typeAt(rest, expr.body, [e, ...ctx], Star);
+			case 'lam|body':
+				return typeAt(rest, expr.body, [e, ...ctx], Hole);
+			case 'type|body':
+				return typeAt(rest, expr.body, ctx, expr.type);
+			case 'app|func':
+				var argType = typecheck(expr.arg, ctx);
+				return typeAt(rest, expr.func, ctx, Pi(argType, wish));
+			case 'app|arg':
+				var funcType = typecheck(expr.func, ctx);
+				if(funcType.kind != 'pi') return Hole("");
+				return typeAt(rest, expr.arg, ctx, funcType.type);
+		};
+		throw { kind: 'Invalid Path', ctx: ctx, exp: expr, path: path };
+	};
+
+	// check a type pattern from typeAt matches type
+	var typeMatch = r.typeMatch = (pattern, type) =>
+		ceq(pattern, type, [], [], (x) => x.kind == 'hole' ? true : undefined);
+
 	// contextual equivalence
-	var ceq = (e0, e1, p0, p1) => {
+	var ceq = (e0, e1, p0, p1, test) => {
+		if(test){
+			var r = test(e0, e1, p0, p1);
+			if(r !== undefined) return r;
+		}
 		if(e0.kind == e1.kind) switch(e0.kind){
-			case 'type': return ceq(e0.type, e1.type, p0, p1) && ceq(e0.body, e1.body, p0, p1);
+			case 'type': return ceq(e0.type, e1.type, p0, p1, test) && ceq(e0.body, e1.body, p0, p1, test);
 			case 'hash': return eq(e0, e1);
 			case 'ref':
 			case 'rec': return e0.value == e1.value;
-			case 'app': return ceq(e0.func, e1.func, p0, p1) && ceq(e0.arg, e1.arg, p0, p1);
+			case 'app': return ceq(e0.func, e1.func, p0, p1, test) && ceq(e0.arg, e1.arg, p0, p1, test);
 			case 'pi':
-			case 'lam': return ceq(e0.type, e1.type, p0, p1) && ceq(e0.body, e1.body, [e0].concat(p0), [e1].concat(p1));
+			case 'lam': return ceq(e0.type, e1.type, p0, p1, test) && ceq(e0.body, e1.body, [e0].concat(p0), [e1].concat(p1), test);
 			default: return true;
 		};
 		switch(e0.kind){
-			case 'hash': return ceq(unwrap(e0), e1, p0, p1);
-			case 'type': return ceq(e0.body, e1, p0, p1);
-			case 'app': return ceq(replace(e0.arg, e0.func, e0.func.body), e1, p0, p1);
-			case 'rec': return p0.length <= e0.value ? false : ceq(p0[e0.value], e1, p0.slice(e0.value), p1);
+			case 'hash': return ceq(unwrap(e0), e1, p0, p1, test);
+			case 'type': return ceq(e0.body, e1, p0, p1, test);
+			case 'app':
+				if(e0.func.kind == 'lam')
+					return ceq(replace(e0.arg, e0.func, e0.func.body), e1, p0, p1, test);
+				break;
+			case 'rec': return p0.length <= e0.value ? false : ceq(p0[e0.value], e1, p0.slice(e0.value), p1, test);
 		};
 		switch(e1.kind){
-			case 'hash': return ceq(e0, unwrap(e1), p0, p1);
-			case 'type': return ceq(e0, e1.body, p0, p1);
-			case 'app': return ceq(e0, replace(e1.arg, e1.func, e1.func.body), p0, p1);
-			case 'rec': return p1.length <= e1.value ? false : ceq(e0, p1[e1.value], p0, p1.slice(e1.value));
+			case 'hash': return ceq(e0, unwrap(e1), p0, p1, test);
+			case 'type': return ceq(e0, e1.body, p0, p1, test);
+			case 'app':
+				if(e1.func.kind == 'lam')
+					return ceq(e0, replace(e1.arg, e1.func, e1.func.body), p0, p1, test);
+				break;
+			case 'rec': return p1.length <= e1.value ? false : ceq(e0, p1[e1.value], p0, p1.slice(e1.value), test);
 		};
 		return false;
 	}
