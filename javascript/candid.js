@@ -559,7 +559,7 @@ var Candid = (() => {
 				p = es.delete(hashFromUTF16(keys[i], {offset:0}));
 				delete _store[keys[i]];
 			} else {
-				p = es.put(_store[keys[i]]);
+				p = es.put(clean(_store[keys[i]]));
 			}
 			i++;
 			p.onsuccess = go;
@@ -583,6 +583,31 @@ var Candid = (() => {
 		}
 		req.onerror = reject;
 	});
+
+	var clean = r.clean = (expr) => {
+		delete expr.closed;
+		delete expr._type;
+		for(var a in expr){
+			if(expr[a] === undefined || expr[a] === "")
+				delete expr[a];
+		}
+		switch(expr.kind){
+			case 'lam':
+			case 'pi':
+			case 'type':
+				expr.type = clean(expr.type);
+				expr.body = clean(expr.body);
+				break;
+			case 'app':
+				expr.func = clean(expr.func);
+				expr.arg = clean(expr.arg);
+				break;
+			case undefined: // actually an entry
+				expr.expr = clean(expr.expr);
+				expr.type = clean(expr.type);
+		}
+		return expr;
+	};
 
 	// render to compact UTF16 format
 	// suitable for use with localStorage
