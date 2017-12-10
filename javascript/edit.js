@@ -181,9 +181,13 @@ var reEdit = (path, refrec, ctx) => {
 				state.expr = Candid.update(state.expr, _path.slice(0,-1), Candid.Hole(''));
 				break;
 			case event.key == 'Enter':
-				// update the parent with the contents of the first match
-				var target = event.target.children[0].children[0];
-				if(target) target.click();
+				// select the first non-dim match TODO hackish
+				for(var target of event.target.children[0].children){
+					if(target.style.filter == ""){
+						target.click();
+						break;
+					}
+				}
 				break;
 			case event.type == 'keydown':
 				return;
