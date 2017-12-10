@@ -397,7 +397,7 @@ var Candid = (() => {
 		// * it's type checked
 		var h = hash(e);
 		var key = hashToUTF16(h);
-		var u = uses(e);
+		var u = uses(uses(e), type);
 		// so we can safely insert it into our store
 		if(replace || _store[key] === undefined){
 			_store[key] = {
@@ -583,6 +583,27 @@ var Candid = (() => {
 		}
 		req.onerror = reject;
 	});
+
+	var isUsed = (hs) => {
+		for(var a in _store){
+			var entry = _store[a];
+			if(!entry) continue;
+			if(!entry.name) continue;
+			if(hs in entry.uses) return true;
+		}
+		return false;
+	};
+
+	var garbage = r.garbage = () => {
+		for(var a in _store){
+			var entry = _store[a];
+			if(!entry) continue;
+			if(entry.name) continue;
+			if(isUsed(hashToUTF16(entry.hash))) continue;
+			_store[a] = undefined;
+		}
+		return save();
+	}
 
 	var clean = r.clean = (expr) => {
 		delete expr.closed;
