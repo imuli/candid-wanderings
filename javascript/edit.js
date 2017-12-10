@@ -202,8 +202,17 @@ var reEdit = (path, refrec, ctx) => {
 	var search;
 	if(state.focus.join('!') == path.join('!')){
 		var list = [];
-		for(k in ctx){
-			list.push(listEntry(refrec(k|0), ctx));
+		var typePat = Candid.typeAt(path.slice(1, -1), state.expr);
+		for(var k in ctx){
+			var expr = refrec(k|0);
+			var dim;
+			try {
+				var type = Candid.typecheck(expr, ctx);
+				dim = !Candid.typeMatch(typePat, type);
+			} catch (e) {
+				dim = true;
+			}
+			list.push(listEntry(refrec(k|0), ctx, dim));
 		}
 		search = E('table', { className: 'candid-matches' }, ...list);
 	}
@@ -456,7 +465,7 @@ var exprEdit = (path, expr, ctx, paren) => {
 
 };
 
-var listEntry = (expr, ctx) => {
+var listEntry = (expr, ctx, dim) => {
 	click = (event) => {
 		switch(state.focus[state.focus.length-1]){
 			case 'state':
@@ -482,7 +491,7 @@ var listEntry = (expr, ctx) => {
 	} catch (e) {
 		type = e.kind;
 	}
-	return E('tr', { onClick: click },
+	return E('tr', { onClick: click, style: dim ? "filter:opacity(50%);" : "" },
 		E('td', {}, viewExpr({expr:expr, ctx:ctx})),
 		E('td', {}, ':'),
 		E('td', {}, type),
