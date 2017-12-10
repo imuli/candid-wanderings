@@ -150,7 +150,7 @@ var Candid = (() => {
 					throw { kind: 'Open Expression', ctx: ctx, exp: e };
 				if(trust)
 					throw { kind: 'Type Inference', ctx: ctx, exp: e };
-				return typecheck(ctx[e.value], slice(e.value+1, ctx), true);
+				return typecheck(ctx[e.value], ctx.slice(e.value+1), true);
 		case 'app':
 				var ft = reduce(unhash(typecheck(e.func, ctx, trust)), true);
 				if(ft.kind != 'pi'){
@@ -191,9 +191,9 @@ var Candid = (() => {
 			case 'type|type':
 				return typeAt(rest, expr.type, ctx, Star);
 			case 'pi|body':
-				return typeAt(rest, expr.body, [e, ...ctx], Star);
+				return typeAt(rest, expr.body, [expr, ...ctx], Star);
 			case 'lam|body':
-				return typeAt(rest, expr.body, [e, ...ctx], Hole);
+				return typeAt(rest, expr.body, [expr, ...ctx], Hole);
 			case 'type|body':
 				return typeAt(rest, expr.body, ctx, expr.type);
 			case 'app|func':
