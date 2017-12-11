@@ -39,9 +39,6 @@ fixed t = span [ class "fixed" ] [ text t ]
 viewStar : Html Message
 viewStar = fixed "*"
 
-viewBox : Html Message
-viewBox = fixed "□"
-
 viewHole : Html Message
 viewHole = fixed "_"
 
@@ -55,7 +52,6 @@ viewExpr r i e =
       viewPiLam c f a t b = span [class c, is i] [viewName f, viewType a t, viewBody f a b ]
   in case e of
     Star        -> viewStar
-    Box         -> viewBox
     Hole        -> viewHole
     Pi  f a t b -> viewPiLam "pi right" f a t b
     Lam f a t b -> viewPiLam "lam right" f a t b
@@ -71,7 +67,6 @@ viewExpr r i e =
 viewTypeError : TypeError -> Html Message
 viewTypeError te =
   span [] <| case te of
-                  UntypedBox -> [ text "Untyped Box" ]
                   UnknownHash h      -> [ text "Unknown Hash: "
                                         , text (toHex h)
                                         ]

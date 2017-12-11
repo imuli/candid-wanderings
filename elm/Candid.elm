@@ -6,7 +6,6 @@ import Blake2s1 exposing (..)
 
 type Expr
   = Star
-  | Box
   | Hole
   | Pi String String Expr Expr -- name argname type body
   | Lam String String Expr Expr -- name argname type body
@@ -23,7 +22,6 @@ ceq cx x cy y =
   case (x,y) of
        -- Trivial cases
        (Star, Star) -> True
-       (Box, Box) -> True
        (Hole, Hole) -> True
        -- Simple cases
        (Ref n1, Ref n2) -> n1 == n2
@@ -85,7 +83,6 @@ reduce exp =
 
 type TypeError
   = TypeMismatch Expr Expr Expr -- application expected found
-  | UntypedBox
   | OpenExpression (List Expr) Expr -- context reference
   | NotAFunction Expr Expr -- function type
   | InvalidInputType Expr Expr -- pi type
@@ -102,8 +99,7 @@ typeIn ctx expr =
   in
   case expr of
        Hole -> Right Hole
-       Star -> Right Box
-       Box -> Left UntypedBox
+       Star -> Right Star
        Ref n -> case head <| drop n ctx of
                      Nothing -> Left <| OpenExpression ctx expr
                      Just t -> Right t
@@ -121,7 +117,6 @@ typeIn ctx expr =
          \x -> let right = recur (with t ctx) f <|
                              \y -> case y of
                                         Star -> Right Star
-                                        Box  -> Right Box
                                         _    -> Left <| InvalidOutputType expr y
                in case x of
                        Star -> right
