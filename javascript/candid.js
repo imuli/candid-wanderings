@@ -193,7 +193,7 @@ var Candid = (() => {
 			case 'pi|body':
 				return typeAt(rest, expr.body, [expr, ...ctx], Star);
 			case 'lam|body':
-				return typeAt(rest, expr.body, [expr, ...ctx], Hole);
+				return typeAt(rest, expr.body, [expr, ...ctx], Hole(""));
 			case 'type|body':
 				return typeAt(rest, expr.body, ctx, expr.type);
 			case 'app|func':
