@@ -9,12 +9,12 @@ type Expr
   | Hole
   | Pi String String Expr Expr -- name argname type body
   | Lam String String Expr Expr -- name argname type body
-  | App Expr Expr -- function argument
+  | App String Expr Expr -- function argument
   | Ref Int -- count
   | Rec Int -- count
   | Note String Expr -- comment body
-  | Type Expr Expr -- type body
-  | Hash Blake2s1
+  | Type String Expr Expr -- type body
+  | Hash String Blake2s1
 
 -- contextual equality
 ceq : List Expr -> Expr -> List Expr -> Expr -> Bool
@@ -29,10 +29,10 @@ ceq cx x cy y =
        -- Recursive cases
        (Note _ b, _) -> ceq cx b cy y
        (_, Note _ b) -> ceq cx x cy b
-       (Type _ b, _) -> ceq cx b cy y
-       (_, Type _ b) -> ceq cx x cy b
+       (Type _ _ b, _) -> ceq cx b cy y
+       (_, Type _ _ b) -> ceq cx x cy b
        -- Birecusive cases
-       (App f1 a1, App f2 a2) -> ceq cx f1 cy f2 && ceq cx a1 cy a2
+       (App _ f1 a1, App _ f2 a2) -> ceq cx f1 cy f2 && ceq cx a1 cy a2
        (Pi _ _ t1 b1, Pi _ _ t2 b2) -> ceq cx t1 cy t2 && ceq (x::cx) b1 (y::cy) b2
        (Lam _  _ t1 b1, Lam _ _ t2 b2) -> ceq cx t1 cy t2 && ceq (x::cx) b1 (y::cy) b2
        -- A recursive type may refer back to a Pi or Lambda
@@ -53,9 +53,9 @@ over ref rec =
                      Rec n       -> rec n c
                      Pi  f a t b -> Pi  f a (i c t) (i (c+1) b)
                      Lam f a t b -> Lam f a (i c t) (i (c+1) b)
-                     App f b     -> App     (i c f) (i c b)
+                     App n f b   -> App n   (i c f) (i c b)
                      Note s x    -> Note s  (i c x)
-                     Type t b    -> Type    (i c t) (i c b)
+                     Type n t b  -> Type n  (i c t) (i c b)
                      _ -> exp
   in i
 
@@ -73,11 +73,11 @@ reduce exp =
   case exp of
        Pi f a t b  -> Pi f a (reduce t) (reduce b)
        Lam f a t b -> Lam f a (reduce t) (reduce b) -- TODO η-reduction
-       App f a -> let rf = reduce f
-                  in case rf of
-                          Lam _ _ _ b -> reduce <| replace a rf b
-                          _ -> App rf a
-       Type _ b -> reduce b
+       App n f a -> let rf = reduce f
+                    in case rf of
+                            Lam _ _ _ b -> reduce <| replace a rf b
+                            _ -> App n rf a
+       Type n _ b -> reduce b
        Note _ b -> reduce b
        _ -> exp
 
@@ -103,7 +103,7 @@ typeIn ctx expr =
        Ref n -> case head <| drop n ctx of
                      Nothing -> Left <| OpenExpression ctx expr
                      Just t -> Right t
-       App f a -> recur ctx f <|
+       App _ f a -> recur ctx f <|
          \x -> case x of
                     Pi _ _ s t -> recur ctx a <|
                       \r -> if eq r s
@@ -120,12 +120,11 @@ typeIn ctx expr =
                                         _    -> Left <| InvalidOutputType expr y
                in case x of
                        Star -> right
-                       Box  -> right
                        _    -> Left <| InvalidInputType expr x
        Note _ b -> typeIn ctx b
        Rec _ -> Right Star
-       Type t _ -> Right t
-       Hash h -> Left (UnknownHash h)
+       Type _ t _ -> Right t
+       Hash _ h -> Left (UnknownHash h)
 
 typeOf : Expr -> Either TypeError Expr
 typeOf expr = typeIn [] expr

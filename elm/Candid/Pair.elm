@@ -18,5 +18,5 @@ p =
         Lam "" "b" (Ref 0) <|
           Lam "" "r" Star <|
             Lam "" "f" (Pi "" "" (Ref 4) <| Pi "" "" (Ref 3) <| Ref 2) <|
-              App (App (Ref 0) (Ref 4)) (Ref 2)
+              App "" (App "" (Ref 0) (Ref 4)) (Ref 2)
 

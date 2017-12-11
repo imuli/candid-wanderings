@@ -55,14 +55,14 @@ viewExpr r i e =
     Hole        -> viewHole
     Pi  f a t b -> viewPiLam "pi right" f a t b
     Lam f a t b -> viewPiLam "lam right" f a t b
-    App f a     -> span [class "app right"] [ span [class "func"] [viewInner f]
+    App _ f a   -> span [class "app right"] [ span [class "func"] [viewInner f]
                                             , span [class "arg" ] [viewInner a]
                                             ]
     Ref n       -> span [class "ref", is (i-n-1), attribute "n" (toString n)] [ text <| getRef n r second (toString n) ]
     Rec n       -> span [class "rec", is (i-n-1), attribute "n" (toString n)] [ text <| getRef n r first (toString n) ]
     Note n f    -> span [class "note"] [ text "-- ", text n ]
-    Type t b    -> span [class "type"] [ viewInner t, text "| ", viewInner b ]
-    Hash h      -> span [class "hash"] [ text (toHex h) ]
+    Type _ t b  -> span [class "type"] [ viewInner t, text "| ", viewInner b ]
+    Hash _ h    -> span [class "hash"] [ text (toHex h) ]
 
 viewTypeError : TypeError -> Html Message
 viewTypeError te =

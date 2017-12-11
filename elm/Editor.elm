@@ -18,7 +18,7 @@ import Candid.Nat as N
 import Candid.List as L
 
 init : (Model, Cmd Message)
-init = ( { expr = App NR.exp NR.one }
+init = ( { expr = App "" NR.exp NR.one }
        , Cmd.none )
 
 main : Program Never Model Message

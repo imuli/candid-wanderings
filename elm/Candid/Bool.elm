@@ -27,11 +27,11 @@ and : Expr
 and =
   Lam "and" "x" bool <|
     Lam "" "y" bool <|
-      App (App (App (Ref 1) bool) (Ref 0)) false
+      App "" (App "" (App "" (Ref 1) bool) (Ref 0)) false
 
 or : Expr
 or =
   Lam "and" "x" bool <|
     Lam "" "y" bool <|
-      App (App (App (Ref 1) bool) true) (Ref 0)
+      App "" (App "" (App "" (Ref 1) bool) true) (Ref 0)
 
