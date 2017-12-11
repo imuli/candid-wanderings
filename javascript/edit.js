@@ -1,6 +1,7 @@
 var E = Inferno.createElement;
 var state =
-	{ focus: ['edit'],
+	{	focus: ['edit'],
+		yank: {expr: Candid.Hole(''), ctx: []},
 		expr: Candid.Hole(''),
 	};
 
@@ -390,6 +391,15 @@ var exprEdit = (path, expr, ctx, paren) => {
 				state.expr = Candid.update(e, _path, Candid.App(expr, Candid.Hole('')));
 				state.focus = ['edit', ..._path, 'arg']
 				break;
+			// yank buffer interaction
+			case event.key == 'y': // yank focused expression
+				state.yank = {expr: expr, ctx: ctx};
+				break;
+			case event.key == 'i': // insert yank buffer
+				// keep relative depth for open expressions in yank buffer
+				var rep = Candid.shift(ctx.length - state.yank.ctx.length, state.yank.expr);
+				state.expr = Candid.update(e, _path, rep);
+				break;
 			// expression naming
 			case expr.kind in {'pi':1,'lam':1,'app':1,'type':1} && event.key == 'n':
 				state.focus = [...path, 'name'];
@@ -548,6 +558,7 @@ var saveLink = (data, name) => {
 var view = () => E('div', {className:'edit'},
 	saveLink(Candid._store, "store"),
 	saveLink(state.expr, "expression"),
+	listEntry(state.yank.expr, state.yank.ctx),
 	viewType(state.expr),
 	E('div', {}, exprEdit(['edit'], state.expr)),
 );
