@@ -1,4 +1,4 @@
-module Blake2s1 exposing (hash, toHex, toUni, zero)
+module Blake2s1 exposing (Blake2s1, hash, toHex, toUni, zero)
 
 import Native.Blake2s1
 
