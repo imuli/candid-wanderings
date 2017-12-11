@@ -3,6 +3,7 @@
     "summary": "Editor for the Candid Meta Language",
     "repository": "https://github.com/imuli/candid.git",
     "license": "CC0-1.0",
+    "native-modules": true,
     "source-directories": [
         "."
     ],

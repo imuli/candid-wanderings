@@ -2,6 +2,7 @@ module Candid exposing (..)
 
 import Either exposing (..)
 import List exposing (head, drop)
+import Blake2s1 exposing (..)
 
 type Expr
   = Star
@@ -14,6 +15,7 @@ type Expr
   | Rec Int -- count
   | Note String Expr -- comment body
   | Type Expr Expr -- type body
+  | Hash Blake2s1
 
 -- contextual equality
 ceq : List Expr -> Expr -> List Expr -> Expr -> Bool
@@ -88,6 +90,7 @@ type TypeError
   | NotAFunction Expr Expr -- function type
   | InvalidInputType Expr Expr -- pi type
   | InvalidOutputType Expr Expr -- pi type
+  | UnknownHash Blake2s1 -- hash
 
 with : Expr -> List Expr -> List Expr
 with t ctx = List.map (shift 1 0) <| t :: ctx
@@ -127,6 +130,7 @@ typeIn ctx expr =
        Note _ b -> typeIn ctx b
        Rec _ -> Right Star
        Type t _ -> Right t
+       Hash h -> Left (UnknownHash h)
 
 typeOf : Expr -> Either TypeError Expr
 typeOf expr = typeIn [] expr

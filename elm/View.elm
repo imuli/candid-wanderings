@@ -3,6 +3,7 @@ module View exposing (view)
 import Html exposing (Html, node, div, h2, span, text)
 import Html.Attributes exposing (class, rel, href, style, attribute)
 import Candid exposing (..)
+import Blake2s1 exposing (..)
 import Model exposing (..)
 import Message exposing (..)
 
@@ -65,11 +66,15 @@ viewExpr r i e =
     Rec n       -> span [class "rec", is (i-n-1), attribute "n" (toString n)] [ text <| getRef n r first (toString n) ]
     Note n f    -> span [class "note"] [ text "-- ", text n ]
     Type t b    -> span [class "type"] [ viewInner t, text "| ", viewInner b ]
+    Hash h      -> span [class "hash"] [ text (toHex h) ]
 
 viewTypeError : TypeError -> Html Message
 viewTypeError te =
   span [] <| case te of
                   UntypedBox -> [ text "Untyped Box" ]
+                  UnknownHash h      -> [ text "Unknown Hash: "
+                                        , text (toHex h)
+                                        ]
                   InvalidInputType p t -> [ text "Pi: "
                                           , viewExpr [] 0 p
                                           , text " has invalid input type: "
