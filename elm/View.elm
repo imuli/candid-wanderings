@@ -1,6 +1,6 @@
 module View exposing (view)
 
-import Html exposing (Html, node, div, h2, span, text)
+import Html exposing (Html, node, div, h3, span, br, text)
 import Html.Attributes exposing (class, rel, href, style, attribute)
 import Candid exposing (..)
 import Blake2s1 exposing (..)
@@ -13,95 +13,178 @@ import Tuple exposing (first, second)
 
 view : Model -> Html Message
 view model =
-  div [class "expr"]
-      [ node "link" [ rel "stylesheet", href "style.css" ] []
-      , h2 [] [ text "Expression:" ]
-      , viewExpr [] 0 model.expr
-      , h2 [] [ text "Type:" ]
-      , viewType (typeOf model.expr)
-      , h2 [] [ text "Reduction:" ]
-      , viewExpr [] 0 (reduce model.expr)
+  div [ style [ ("font-size","1.5em"), ("padding", "1ex") ] ]
+      [ h3 [ style [ ("display","inline-block"), ("padding-right","1em") ] ] [ text "Type: " ]
+      , viewType (typecheck model.expr [] False)
+      , br [] []
+      , viewExpr model.focus [] model.expr [] 0
       ]
 
 index : Int -> List a -> Maybe a
 index i xs = head <| drop i xs
 
-getRef : Int -> List (String, String) -> ((String, String) -> String) -> String -> String
-getRef i reflist which default = case index i reflist of
-                                      Nothing -> default
-                                      Just p -> case which p of
-                                                     "" -> default
-                                                     a -> a
+kind : Expr -> String
+kind expr = case expr of
+  Star        -> "star"
+  Hole        -> "hole"
+  Ref _       -> "ref"
+  Rec _       -> "rec"
+  Hash _ _    -> "hash"
+  Note _ b    -> "note"
+  App _ f a   -> "app"
+  Pi _ _ t b  -> "pi"
+  Type _ t b  -> "type"
+  Lam _ _ t b -> "lam"
 
-fixed : String -> Html Message
-fixed t = span [ class "fixed" ] [ text t ]
+name : Maybe Expr -> String
+name expr = case expr of
+  Just (Hash n _)    -> n
+  Just (App n f a)   -> n
+  Just (Pi n _ t b)  -> n
+  Just (Type n t b)  -> n
+  Just (Lam n _ t b) -> n
+  _ -> ""
 
-viewStar : Html Message
-viewStar = fixed "*"
+argname : Maybe Expr -> String
+argname expr = case expr of
+  Just (Pi _ a t b)  -> a
+  Just (Lam _ a t b) -> a
+  _ -> ""
 
-viewHole : Html Message
-viewHole = fixed "_"
+string : String -> a -> (String -> a) -> a
+string s empty full =
+  case s of
+    "" -> empty
+    _  -> full s
 
-viewExpr : List (String, String) -> Int -> Expr -> Html Message
-viewExpr r i e =
-  let is n = class ("r" ++ toString n)
-      viewInner f = viewExpr r i f
-      viewName f = span [class "name", is i] [text f]
-      viewType a t = span [class "type"] [ span [class "typename"] [text a], viewInner t ]
-      viewBody f a b = span [class "body"] [ viewExpr ((f,a) :: r) (i+1) b ]
-      viewPiLam c f a t b = span [class c, is i] [viewName f, viewType a t, viewBody f a b ]
-  in case e of
-    Star        -> viewStar
-    Hole        -> viewHole
-    Pi  f a t b -> viewPiLam "pi right" f a t b
-    Lam f a t b -> viewPiLam "lam right" f a t b
-    App _ f a   -> span [class "app right"] [ span [class "func"] [viewInner f]
-                                            , span [class "arg" ] [viewInner a]
-                                            ]
-    Ref n       -> span [class "ref", is (i-n-1), attribute "n" (toString n)] [ text <| getRef n r second (toString n) ]
-    Rec n       -> span [class "rec", is (i-n-1), attribute "n" (toString n)] [ text <| getRef n r first (toString n) ]
-    Note n f    -> span [class "note"] [ text "-- ", text n ]
-    Type _ t b  -> span [class "type"] [ viewInner t, text "| ", viewInner b ]
-    Hash _ h    -> span [class "hash"] [ text (toHex h) ]
+{- rewrite references in open expressions to count down rather than up -}
+muddle : Int -> Expr -> Expr
+muddle depth expr =
+  if closed expr < 0
+  then expr
+  else case expr of
+    Star -> expr
+    Hole -> expr
+    Hash _ _ -> expr
+    Ref v -> Ref (depth - v)
+    Rec v -> Rec (depth - v)
+    Type name ty body -> Type name (muddle depth ty) (muddle depth body)
+    App name func arg -> App name (muddle depth func) (muddle depth arg)
+    Pi name argname ty body -> Pi name argname (muddle depth ty) (muddle (depth+1) body)
+    Lam name argname ty body -> Lam name argname (muddle depth ty) (muddle (depth+1) body)
+    Note str body -> Note str (muddle depth body)
+
+colorExpr : Either a Expr -> List Expr -> String
+colorExpr eExpr ctx =
+  case eExpr of
+    Left _ -> "black"
+    Right expr -> "/* " ++ toString (muddle (List.length ctx) expr) ++ " */ " ++ "#" ++ (String.left 6 <| toHex <| Candid.hash <| muddle (List.length ctx) expr)
+
+parExpr : Expr -> Int
+parExpr expr = case expr of
+        Star        -> 99
+        Hole        -> 99
+        Ref i       -> 99
+        Rec i       -> 99
+        Hash n h    -> 99
+        Note s b    -> 99
+        App n f a   -> 2
+        Pi n a t b  -> 1
+        Type n t b  -> 1
+        Lam n a t b -> 1
+
+viewExpr : Path -> Path -> Expr -> List Expr -> Int -> Html Message
+viewExpr focus path expr context paren =
+  let -- discard extra context
+      ctx = if closed expr < 0 then [] else context
+      -- helper to view a subexpression
+      viewSub step = viewExpr focus (step :: path)
+      -- when this expression has focus
+      focusStyle = if focus == path then ("outline", "1px solid #80ff80") else ("","")
+      -- color things by their type
+      colorStyle eExpr = ("color", colorExpr eExpr ctx)
+      -- wrap expression in parens
+      par x =
+        if paren >= parExpr expr
+        then span [ class "candid-paren" ] [ text "(", x, text ")" ]
+        else x
+      -- wrap in a color
+      wrapColor eExpr = span [ style [ colorStyle eExpr ] ]
+      -- wrapper for expressions
+      view xs = span [ class ("candid-" ++ kind expr)
+                     , style <| focusStyle :: if List.length xs == 1 then [ colorStyle (typecheck expr ctx False) ] else []
+                     ] xs
+      -- helper for expression names
+      viewName n = string n [] <| always [ wrapColor (typecheck expr ctx False) [ text n ]
+                                         , text " = " ]
+      -- helper for argument names
+      viewArgname ty n = string n [] <| always [ wrapColor (Right ty) [ text n ]
+                                               , text " : " ]
+  in par <| view <| case expr of
+        Star        -> [ text "★" ]
+        Hole        -> [ text "_" ]
+        Ref i       -> [ text <| string (argname (index i ctx)) ("!" ++ toString i) identity ]
+        Rec i       -> [ text <| string (name (index i ctx)) ("@" ++ toString i) identity ]
+        Hash n h    -> [ text <| string n (toUni h) identity ]
+        Note s b    -> [ text ("-- " ++ s)
+                       , viewSub Rightward b ctx paren
+                       ]
+        App n f a   -> viewName n ++
+                       [ viewSub Leftward f ctx 1
+                       , text " "
+                       , viewSub Rightward a ctx 2
+                       ]
+        Pi n a t b  -> viewName n ++ viewArgname t a ++
+                       [ viewSub Leftward t ctx 1
+                       , text " ⇒ "
+                       , viewSub Rightward b (expr :: ctx) 0
+                       ]
+        Type n t b  -> viewName n ++
+                       [ viewSub Leftward t ctx 1
+                       , br [] []
+                       , viewSub Rightward b ctx 0
+                       ]
+        Lam n a t b -> viewName n ++ viewArgname t a ++
+                       [ viewSub Leftward t ctx 1
+                       , text " → "
+                       , viewSub Rightward b (expr :: ctx) 0
+                       ]
+
+viewIn : Expr -> List Expr -> Html Message
+viewIn expr ctx = viewExpr [] [None] expr ctx 0
 
 viewTypeError : TypeError -> Html Message
 viewTypeError te =
-  span [] <| case te of
-                  UnknownHash h      -> [ text "Unknown Hash: "
-                                        , text (toHex h)
-                                        ]
-                  InvalidInputType p t -> [ text "Pi: "
-                                          , viewExpr [] 0 p
-                                          , text " has invalid input type: "
-                                          , viewExpr [] 0 t
-                                          ]
-                  InvalidOutputType p t -> [ text "Pi: "
-                                           , viewExpr [] 0 p
-                                           , text " has invalid output type: "
-                                           , viewExpr [] 0 t
-                                          ]
-                  NotAFunction f t -> [ text "Not a function:"
-                                      , viewExpr [] 0 f
-                                      , text "Actual Type:"
-                                      , viewExpr [] 0 t
-                                      ]
-                  OpenExpression ctx x -> [ text "Open Expression:"
-                                          , viewExpr [] 0 x
-                                          ] ++ List.map (viewExpr [] 0) ctx
-                  TypeMismatch app expect found -> [ div [] [ text "Type Mismatch at: "
-                                                            , viewExpr [] 0 app
-                                                            ]
-                                                   , div [] [ text "expected type: "
-                                                            , viewExpr [] 0 expect
-                                                            ]
-                                                   , div [] [ text "found type: "
-                                                            , viewExpr [] 0 found
-                                                            ]
-                                                   ]
+  let xpect ctx expected actual =
+        [ text "Expected type: "
+        , viewIn expected ctx
+        , br [] []
+        , text "Actual type: "
+        , viewIn actual ctx
+        ]
+  in span [] <| case te of
+    BadContext -> [ text "⸘Bad Context‽" ]
+    UnknownHash h ->
+      [ text "Unknown Hash: "
+      , text (toHex h)
+      ]
+    OpenExpression ctx x ->
+      [ text "Open Expression:"
+      , viewIn x ctx
+      ]
+    TypeInference ctx expr ->
+      [ text "Type Inference at: "
+      , viewIn expr ctx
+      ]
+    TypeMismatch ctx app expected actual ->
+      [ text "Type Mismatch at: "
+      , viewIn app ctx
+      , br [] []
+      ] ++ xpect ctx expected actual
 
 viewType : Either TypeError Expr -> Html Message
 viewType e =
   case e of
        Left te -> viewTypeError te
-       Right expr -> viewExpr [] 0 expr
+       Right expr -> viewIn expr []
 

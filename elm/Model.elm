@@ -3,4 +3,6 @@ module Model exposing (Model)
 import Candid exposing (..)
 
 type alias Model =
-  { expr : Expr }
+  { expr : Expr
+  , focus : Path
+  }
