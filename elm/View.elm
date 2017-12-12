@@ -1,7 +1,13 @@
 module View exposing (view)
 
-import Html exposing (Html, node, div, h3, span, br, text)
-import Html.Attributes exposing (class, rel, href, style, attribute)
+import Html exposing (Html)
+
+import Style
+import Style.Font
+import Style.Color
+import Element exposing (el, row, column, text)
+import Element.Attributes exposing (center, inlineStyle, padding, spacing)
+
 import Candid exposing (..)
 import Blake2s1 exposing (..)
 import Model exposing (..)
@@ -11,14 +17,30 @@ import Either exposing (..)
 import List exposing (..)
 import Tuple exposing (first, second)
 
+type Styles
+  = Title
+  | Header
+  | Main
+  | Plain
+  | TypeRow
+  | ExprRow
+
+stylesheet = Style.styleSheet
+  [ Style.style Title [ Style.Font.size 24, Style.Font.center ]
+  , Style.style Main [ Style.Font.size 16 ]
+  , Style.style Header [ Style.Font.size 18 ]
+  , Style.style Plain [ ]
+  , Style.style TypeRow [ ]
+  , Style.style ExprRow [ ]
+  ]
+
 view : Model -> Html Message
-view model =
-  div [ style [ ("font-size","1.5em"), ("padding", "1ex") ] ]
-      [ h3 [ style [ ("display","inline-block"), ("padding-right","1em") ] ] [ text "Type: " ]
-      , viewType (typecheck model.expr [] False)
-      , br [] []
-      , viewExpr model.focus [] model.expr [] 0
-      ]
+view model = Element.layout stylesheet <|
+  column Main [ padding 10, spacing 10]
+  [ el Title [center] (Element.text "candid")
+  , row TypeRow [] [ el Header [] (text "Type: "), viewType (typecheck model.expr [] False) ]
+  , row ExprRow [] [ viewExpr model.focus [] model.expr [] 0 ]
+  ]
 
 index : Int -> List a -> Maybe a
 index i xs = head <| drop i xs
@@ -78,7 +100,7 @@ colorExpr : Either a Expr -> List Expr -> String
 colorExpr eExpr ctx =
   case eExpr of
     Left _ -> "black"
-    Right expr -> "/* " ++ toString (muddle (List.length ctx) expr) ++ " */ " ++ "#" ++ (String.left 6 <| toHex <| Candid.hash <| muddle (List.length ctx) expr)
+    Right expr -> "#" ++ (String.left 6 <| toHex <| Candid.hash <| muddle (List.length ctx) expr)
 
 parExpr : Expr -> Int
 parExpr expr = case expr of
@@ -93,7 +115,7 @@ parExpr expr = case expr of
         Type n t b  -> 1
         Lam n a t b -> 1
 
-viewExpr : Path -> Path -> Expr -> List Expr -> Int -> Html Message
+viewExpr : Path -> Path -> Expr -> List Expr -> Int -> Element.Element Styles variation Message
 viewExpr focus path expr context paren =
   let -- discard extra context
       ctx = if closed expr < 0 then [] else context
@@ -106,83 +128,76 @@ viewExpr focus path expr context paren =
       -- wrap expression in parens
       par x =
         if paren >= parExpr expr
-        then span [ class "candid-paren" ] [ text "(", x, text ")" ]
+        then row Plain [] [ text "(", x, text ")" ]
         else x
       -- wrap in a color
-      wrapColor eExpr = span [ style [ colorStyle eExpr ] ]
+      wrapColor eExpr = el Plain [(inlineStyle [ colorStyle eExpr ])]
       -- wrapper for expressions
-      view xs = span [ class ("candid-" ++ kind expr)
-                     , style <| focusStyle :: if List.length xs == 1 then [ colorStyle (typecheck expr ctx False) ] else []
-                     ] xs
+      wrapTypeColor = wrapColor (typecheck expr ctx False)
       -- helper for expression names
-      viewName n = string n [] <| always [ wrapColor (typecheck expr ctx False) [ text n ]
+      viewName n = string n [] <| always [ wrapColor (typecheck expr ctx False) (text n)
                                          , text " = " ]
       -- helper for argument names
-      viewArgname ty n = string n [] <| always [ wrapColor (Right ty) [ text n ]
+      viewArgname ty n = string n [] <| always [ wrapColor (Right ty) (text n)
                                                , text " : " ]
-  in par <| view <| case expr of
-        Star        -> [ text "★" ]
-        Hole        -> [ text "_" ]
-        Ref i       -> [ text <| string (argname (index i ctx)) ("!" ++ toString i) identity ]
-        Rec i       -> [ text <| string (name (index i ctx)) ("@" ++ toString i) identity ]
-        Hash n h    -> [ text <| string n (toUni h) identity ]
-        Note s b    -> [ text ("-- " ++ s)
+  in par <| case expr of
+        Star        -> wrapTypeColor <| text "★"
+        Hole        -> wrapTypeColor <| text "_"
+        Ref i       -> wrapTypeColor <| text <| string (argname (index i ctx)) ("!" ++ toString i) identity
+        Rec i       -> wrapTypeColor <| text <| string (name (index i ctx)) ("@" ++ toString i) identity
+        Hash n h    -> wrapTypeColor <| text <| string n (toUni h) identity
+        Note s b    -> row Plain []
+                       [ text ("-- " ++ s)
                        , viewSub Rightward b ctx paren
                        ]
-        App n f a   -> viewName n ++
+        App n f a   -> row Plain [] <|
+                       viewName n ++
                        [ viewSub Leftward f ctx 1
                        , text " "
                        , viewSub Rightward a ctx 2
                        ]
-        Pi n a t b  -> viewName n ++ viewArgname t a ++
+        Pi n a t b  -> row Plain [] <|
+                       viewName n ++ viewArgname t a ++
                        [ viewSub Leftward t ctx 1
                        , text " ⇒ "
                        , viewSub Rightward b (expr :: ctx) 0
                        ]
-        Type n t b  -> viewName n ++
-                       [ viewSub Leftward t ctx 1
-                       , br [] []
+        Type n t b  -> column Plain []
+                       [ row Plain [] <| viewName n ++ [ viewSub Leftward t ctx 1 ]
                        , viewSub Rightward b ctx 0
                        ]
-        Lam n a t b -> viewName n ++ viewArgname t a ++
+        Lam n a t b -> row Plain [] <|
+                       viewName n ++ viewArgname t a ++
                        [ viewSub Leftward t ctx 1
                        , text " → "
                        , viewSub Rightward b (expr :: ctx) 0
                        ]
 
-viewIn : Expr -> List Expr -> Html Message
+viewIn : Expr -> List Expr -> Element.Element Styles variation Message
 viewIn expr ctx = viewExpr [] [None] expr ctx 0
 
-viewTypeError : TypeError -> Html Message
-viewTypeError te =
-  let xpect ctx expected actual =
-        [ text "Expected type: "
-        , viewIn expected ctx
-        , br [] []
-        , text "Actual type: "
-        , viewIn actual ctx
-        ]
-  in span [] <| case te of
-    BadContext -> [ text "⸘Bad Context‽" ]
-    UnknownHash h ->
+viewTypeError : TypeError -> Element.Element Styles variation Message
+viewTypeError te = case te of
+    BadContext -> text "⸘Bad Context‽"
+    UnknownHash h -> row Plain []
       [ text "Unknown Hash: "
       , text (toHex h)
       ]
-    OpenExpression ctx x ->
-      [ text "Open Expression:"
+    OpenExpression ctx x -> row Plain []
+      [ text "Open Expression: "
       , viewIn x ctx
       ]
-    TypeInference ctx expr ->
+    TypeInference ctx expr -> row Plain []
       [ text "Type Inference at: "
       , viewIn expr ctx
       ]
-    TypeMismatch ctx app expected actual ->
-      [ text "Type Mismatch at: "
-      , viewIn app ctx
-      , br [] []
-      ] ++ xpect ctx expected actual
+    TypeMismatch ctx app expected actual -> column Plain []
+      [ row Plain [] [ text "Type Mismatch at: ", viewIn app ctx ]
+      , row Plain [] [ text "Expected type: ", viewIn expected ctx ]
+      , row Plain [] [ text "Actual type: ", viewIn actual ctx ]
+      ]
 
-viewType : Either TypeError Expr -> Html Message
+viewType : Either TypeError Expr -> Element.Element Styles variation Message
 viewType e =
   case e of
        Left te -> viewTypeError te
