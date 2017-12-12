@@ -87,7 +87,7 @@ reduce expr =
 
 
 {- a path can identify a particular subexpression in an expression -}
-type Step = Name | ArgName | TypeS | Body | Func | Arg | Value
+type Step = Name | ArgName | Value | Leftward | Rightward
 type alias Path = List Step
 
 type Replacement
@@ -114,6 +114,7 @@ sub repl expr path =
       (S s, Pi n _ t b)  -> Just <| Pi n s t b
       (_, _)             -> Nothing
     Value :: [] -> case (repl, expr) of
+      (S s, Note _ b)    -> Just <| Note s b
       (N n, Ref _)       -> Just <| Ref n
       (N n, Rec _)       -> Just <| Rec n
       (_, _)             -> Nothing
@@ -122,23 +123,19 @@ sub repl expr path =
     ArgName :: _ -> Nothing
     Value :: _ -> Nothing
     -- recursive cases
-    TypeS :: rest -> case expr of
+    Leftward :: rest -> case expr of
       Lam n a t b -> Maybe.map (\x -> Lam n a x b) (sub repl t rest)
       Pi n a t b  -> Maybe.map (\x -> Pi n a x b) (sub repl t rest)
       Type n t b  -> Maybe.map (\x -> Type n x b) (sub repl t rest)
+      App n f a   -> Maybe.map (\x -> App n x a) (sub repl f rest)
       _           -> Nothing
-    Body :: rest -> case expr of
+    Rightward :: rest -> case expr of
       Lam n a t b -> Maybe.map (\x -> Lam n a t x) (sub repl b rest)
       Pi n a t b  -> Maybe.map (\x -> Pi n a t x) (sub repl b rest)
       Type n t b  -> Maybe.map (\x -> Type n t x) (sub repl b rest)
-      Note n b    -> Maybe.map (\x -> Note n x) (sub repl b rest)
+      App n f a   -> Maybe.map (\x -> App n f x) (sub repl a rest)
+      Note s b    -> Maybe.map (\x -> Note s x) (sub repl b rest)
       _           -> Nothing
-    Func :: rest -> case expr of
-      App n f a -> Maybe.map (\x -> App n x a) (sub repl f rest)
-      _         -> Nothing
-    Arg :: rest -> case expr of
-      App n f a -> Maybe.map (\x -> App n f x) (sub repl a rest)
-      _         -> Nothing
 
 -- contextual equality
 ceq : List Expr -> Expr -> List Expr -> Expr -> Bool
