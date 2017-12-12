@@ -87,13 +87,55 @@ reduce expr =
 
 
 {- a path can identify a particular subexpression in an expression -}
-type Step = Name | ArgName | Value | Leftward | Rightward
+type Step = Name | ArgName | Value | Leftward | Rightward | None
 type alias Path = List Step
 
 type Replacement
   = S String
   | E Expr
   | N Int
+
+lookup : Expr -> Path -> Maybe Replacement
+lookup expr path =
+  case path of
+    -- terminal cases
+    [] -> Just (E expr)
+    Name :: [] -> case expr of
+      Lam n _ _ _ -> Just (S n)
+      Pi n _ _ _  -> Just (S n)
+      Type n _ _  -> Just (S n)
+      App n _ _   -> Just (S n)
+      Hash n _    -> Just (S n)
+      _           -> Nothing
+    ArgName :: [] -> case expr of
+      Lam _ a _ _ -> Just (S a)
+      Pi _ a _ _  -> Just (S a)
+      _           -> Nothing
+    Value :: [] -> case expr of
+      Note s _    -> Just (S s)
+      Ref n       -> Just (N n)
+      Rec n       -> Just (N n)
+      _           -> Nothing
+    -- Name, ArgName, and Value must terminate the path
+    Name :: _ -> Nothing
+    ArgName :: _ -> Nothing
+    Value :: _ -> Nothing
+    -- None always does Nothing
+    None :: _ -> Nothing
+    -- recursive cases
+    Leftward :: rest -> case expr of
+      Lam n a t b -> lookup t rest
+      Pi n a t b  -> lookup t rest
+      Type n t b  -> lookup t rest
+      App n f a   -> lookup f rest
+      _           -> Nothing
+    Rightward :: rest -> case expr of
+      Lam n a t b -> lookup b rest
+      Pi n a t b  -> lookup b rest
+      Type n t b  -> lookup b rest
+      App n f a   -> lookup a rest
+      Note s b    -> lookup b rest
+      _           -> Nothing
 
 sub : Replacement -> Expr -> Path -> Maybe Expr
 sub repl expr path =
@@ -122,6 +164,8 @@ sub repl expr path =
     Name :: _ -> Nothing
     ArgName :: _ -> Nothing
     Value :: _ -> Nothing
+    -- None always does Nothing
+    None :: _ -> Nothing
     -- recursive cases
     Leftward :: rest -> case expr of
       Lam n a t b -> Maybe.map (\x -> Lam n a x b) (sub repl t rest)
