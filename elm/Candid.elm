@@ -212,50 +212,65 @@ eq : Expr -> Expr -> Bool
 eq x y = ceq [] x [] y
 
 type TypeError
-  = TypeMismatch Expr Expr Expr -- application expected found
-  | OpenExpression (List Expr) Expr -- context reference
-  | NotAFunction Expr Expr -- function type
-  | InvalidInputType Expr Expr -- pi type
-  | InvalidOutputType Expr Expr -- pi type
+  = TypeMismatch (List Expr) Expr Expr Expr -- context expr expected actual
+  | OpenExpression (List Expr) Expr -- context reference/recur
+  | TypeInference (List Expr) Expr -- context recur
   | UnknownHash Blake2s1 -- hash
+  | BadContext -- shouldn't ever come up
 
-with : Expr -> List Expr -> List Expr
-with t ctx = List.map (shift 1) <| t :: ctx
-
-typeIn : List Expr -> Expr -> Either TypeError Expr
-typeIn ctx expr =
-  let recur : List Expr -> Expr -> (Expr -> Either TypeError Expr) -> Either TypeError Expr
-      recur c x f = andThen f (map reduce <| typeIn c x)
-  in
-  case expr of
-       Hole -> Right Hole
-       Star -> Right Star
-       Ref n -> case head <| drop n ctx of
-                     Nothing -> Left <| OpenExpression ctx expr
-                     Just t -> Right t
-       App _ f a -> recur ctx f <|
-         \x -> case x of
-                    Pi _ _ s t -> recur ctx a <|
-                      \r -> if eq r s
-                               then Right <| reduce <| replace a x t
-                               else Left <| TypeMismatch expr s r
-                    r      -> Left <| NotAFunction f r
-       Lam _ a t f -> recur ctx t <|
-         \_ -> recur (with t ctx) f <|
-           \s -> Right <| Pi "" a t s
-       Pi _ _ t f -> recur ctx t <|
-         \x -> let right = recur (with t ctx) f <|
-                             \y -> case y of
-                                        Star -> Right Star
-                                        _    -> Left <| InvalidOutputType expr y
-               in case x of
-                       Star -> right
-                       _    -> Left <| InvalidInputType expr x
-       Note _ b -> typeIn ctx b
-       Rec _ -> Right Star
-       Type _ t _ -> Right t
-       Hash _ h -> Left (UnknownHash h)
-
-typeOf : Expr -> Either TypeError Expr
-typeOf expr = typeIn [] expr
+typecheck : Expr -> List Expr -> Bool -> Either TypeError Expr
+typecheck expr ctx trust =
+  let isStar parent ty = case ty of
+      Star -> Right Star
+      _    -> Left (TypeMismatch ctx parent Star ty)
+  in case (trust, expr) of
+    -- trivial cases
+    (True, Rec i)    -> Left (TypeInference ctx expr)
+    (True, Pi n a ty body) -> Right Star
+    (True, Type n ty body) -> Right ty
+    (_, Star)        -> Right Star
+    (_, Hole)        -> Right Hole
+    (_, Note n body) -> typecheck body ctx trust
+    (_, Hash n h)    -> Left (UnknownHash h)
+    -- backward looking cases
+    (_, Ref i)       ->
+      case head <| drop i ctx of
+        Nothing -> Left (OpenExpression ctx expr)
+        Just (Lam _ _ ty _) -> Right (shift (i+1) ty)
+        Just (Pi _ _ ty _)  -> Right (shift (i+1) ty)
+        Just _             -> Left BadContext
+    (_, Rec i)       ->
+      case head <| drop i ctx of
+        Nothing -> Left (OpenExpression ctx expr)
+        Just x  -> typecheck x (drop (i+1) ctx) True
+    -- recursive cases
+    (False, Pi n a ty body) ->
+      typecheck ty ctx trust |>
+      andThen (isStar ty) |>
+      andThen (\_ -> typecheck body (expr :: ctx) trust) |>
+      andThen (isStar ty)
+    (False, Type n ty body) ->
+      map reduce (typecheck body ctx trust) |>
+      andThen (\actual ->
+        if ceq ctx actual ctx ty
+           then Right ty
+           else Left (TypeMismatch ctx body ty actual)
+      )
+    (_, App n func arg) ->
+      map reduce (typecheck func ctx trust) |>
+      andThen (\functype -> case functype of
+        Pi _ _ input output ->
+          map reduce (typecheck arg ctx trust) |>
+          andThen (\argtype ->
+            if ceq ctx input ctx argtype
+               then Right (replace arg functype output)
+               else Left (TypeMismatch ctx arg input argtype)
+          )
+        _ -> Left (TypeMismatch ctx func (Pi "" "" Hole Hole) functype)
+      )
+    (_, Lam n a ty body) ->
+      typecheck ty ctx trust |>
+      andThen (isStar ty) |>
+      andThen (\_ -> typecheck body (expr :: ctx) trust) |>
+      andThen (\out -> Right (Pi "" a ty out))
 
