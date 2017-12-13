@@ -36,7 +36,7 @@ stylesheet = Style.styleSheet
 
 view : Model -> Html Message
 view model = Element.layout stylesheet <|
-  column Main [ padding 10, spacing 10]
+  column Main [ padding 10, spacing 10 ]
   [ el Title [center] (Element.text "candid")
   , row TypeRow [] [ el Header [] (text "Type: "), viewType (typecheck model.expr [] False) ]
   , row ExprRow [] [ viewExpr model.focus [] model.expr [] 0 ]
@@ -122,7 +122,7 @@ viewExpr focus path expr context paren =
       -- helper to view a subexpression
       viewSub step = viewExpr focus (step :: path)
       -- when this expression has focus
-      focusStyle = if focus == path then ("outline", "1px solid #80ff80") else ("","")
+      hasFocus = if focus == path then [ inlineStyle [ ("outline", "1px solid #80ff80") ] ] else []
       -- color things by their type
       colorStyle eExpr = ("color", colorExpr eExpr ctx)
       -- wrap expression in parens
@@ -131,7 +131,7 @@ viewExpr focus path expr context paren =
         then row Plain [] [ text "(", x, text ")" ]
         else x
       -- wrap in a color
-      wrapColor eExpr = el Plain [(inlineStyle [ colorStyle eExpr ])]
+      wrapColor eExpr = el Plain [ (inlineStyle [ colorStyle eExpr ]) ]
       -- wrapper for expressions
       wrapTypeColor = wrapColor (typecheck expr ctx False)
       -- helper for expression names
@@ -140,7 +140,7 @@ viewExpr focus path expr context paren =
       -- helper for argument names
       viewArgname ty n = string n [] <| always [ wrapColor (Right ty) (text n)
                                                , text " : " ]
-  in par <| case expr of
+  in par <| el Plain hasFocus <| case expr of
         Star        -> wrapTypeColor <| text "★"
         Hole        -> wrapTypeColor <| text "_"
         Ref i       -> wrapTypeColor <| text <| string (argname (index i ctx)) ("!" ++ toString i) identity
