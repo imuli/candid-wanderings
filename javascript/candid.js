@@ -340,6 +340,18 @@ var Candid = (() => {
 	var update = r.update = (expr, path, repl) =>
 		_update(clone(expr), path, repl);
 
+	// return the subexpression and it's context identified by path
+	var lookup = r.lookup = (expr, path, ctx) => {
+		if(path.length == 0) return {expr: expr, ctx: ctx};
+		switch(expr.kind){
+			case 'pi':
+			case 'lam':
+				ctx = [expr, ...ctx];
+				break;
+		}
+		return lookup(expr[path[0]], path.slice(1), ctx);
+	};
+
 	// return the subexpression identified by path
 	var byPath = r.byPath = (expr, path) => {
 		for(var seg of path)
