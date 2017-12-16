@@ -193,7 +193,19 @@ var Candid = (() => {
 			case 'pi|body':
 				return typeAt(rest, expr.body, [expr, ...ctx], Star);
 			case 'lam|body':
-				return typeAt(rest, expr.body, [expr, ...ctx], Hole(""));
+				var subwish = undefined
+				while(subwish === undefined){
+					if(wish.kind == 'pi'){
+							subwish = wish.body;
+					} else if(wish.kind == 'hash'){
+						wish = unwrap(wish);
+					} else if(wish.kind == 'app'){
+						wish = reduce(wish);
+					} else {
+						newwish = Hole('');;
+					}
+				}
+				return typeAt(rest, expr.body, [expr, ...ctx], subwish);
 			case 'type|body':
 				return typeAt(rest, expr.body, ctx, expr.type);
 			case 'app|func':
