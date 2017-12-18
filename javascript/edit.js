@@ -555,10 +555,23 @@ var saveLink = (data, name) => {
 	}, "Save " + name);
 };
 
+var pathType = (path, expr) => {
+	try {
+		var last = path[path.length-1];
+		if(last in {argname:1, name:1, value:1})
+			path = path.slice(0,-1);
+		return viewExpr(Candid.typeAt(path, state.expr));
+	} catch (e) {
+		console.warn(e);
+		return "error";
+	}
+};
+
 var view = () => E('div', {className:'edit'},
 	saveLink(Candid._store, "store"),
 	saveLink(state.expr, "expression"),
 	listEntry(state.yank.expr, state.yank.ctx),
+	pathType(state.focus.slice(1), state.expr),
 	viewType(state.expr),
 	E('div', {}, exprEdit(['edit'], state.expr)),
 );

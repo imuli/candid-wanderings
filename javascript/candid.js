@@ -182,7 +182,7 @@ var Candid = (() => {
 	var typeAt = r.typeAt = (path, expr, ctx, wish) => {
 		if(ctx === undefined) ctx = [];
 		if(wish === undefined) wish = Hole("");
-		if(path.length == 0) return wish;
+		if(path.length == 0) return {type: wish, ctx: ctx};
 		var step = path[0];
 		var rest = path.slice(1);
 		switch(expr.kind + '|' + step){
@@ -193,24 +193,21 @@ var Candid = (() => {
 			case 'pi|body':
 				return typeAt(rest, expr.body, [expr, ...ctx], Star);
 			case 'lam|body':
-				var subwish = undefined
-				while(subwish === undefined){
-					if(wish.kind == 'pi'){
-							subwish = wish.body;
-					} else if(wish.kind == 'hash'){
-						wish = unwrap(wish);
-					} else if(wish.kind == 'app'){
-						wish = reduce(wish);
-					} else {
-						newwish = Hole('');;
-					}
-				}
+				if(wish.kind == 'hash')
+					wish = unwrap(wish);
+				if(wish.kind == 'app')
+					wish = reduce(unhash(wish));
+				var subwish;
+				if(wish.kind == 'pi')
+					subwish = wish.body;
+				else
+					subwish = Hole('');;
 				return typeAt(rest, expr.body, [expr, ...ctx], subwish);
 			case 'type|body':
 				return typeAt(rest, expr.body, ctx, expr.type);
 			case 'app|func':
 				var argType = typecheck(expr.arg, ctx);
-				return typeAt(rest, expr.func, ctx, Pi(argType, wish));
+				return typeAt(rest, expr.func, ctx, Pi(argType, shift(1, wish)));
 			case 'app|arg':
 				var funcType = typecheck(expr.func, ctx);
 				if(funcType.kind != 'pi') return Hole("");
