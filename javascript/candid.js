@@ -186,8 +186,10 @@ var Candid = (() => {
 		var step = path[0];
 		var rest = path.slice(1);
 		switch(expr.kind + '|' + step){
-			case 'pi|type':
 			case 'lam|type':
+				if(wish.kind == 'pi')
+					return typeAt(rest, expr.type, ctx, wish.type);
+			case 'pi|type':
 			case 'type|type':
 				return typeAt(rest, expr.type, ctx, Star);
 			case 'pi|body':
@@ -351,13 +353,10 @@ var Candid = (() => {
 
 	// return the subexpression and it's context identified by path
 	var lookup = r.lookup = (expr, path, ctx) => {
+		if(ctx === undefined) ctx = [];
 		if(path.length == 0) return {expr: expr, ctx: ctx};
-		switch(expr.kind){
-			case 'pi':
-			case 'lam':
-				ctx = [expr, ...ctx];
-				break;
-		}
+		if(path[0] == 'body' && {pi: true, lam: true}[expr.kind])
+			ctx = [expr, ...ctx];
 		return lookup(expr[path[0]], path.slice(1), ctx);
 	};
 
