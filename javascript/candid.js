@@ -4,6 +4,41 @@ if(typeof blake2s1 == 'undefined') blake2s1 = require('./blake2s1.js');
 var Candid = (() => {
 	var r = {};
 
+	// feed an expression tree into a function
+	var fold = r.fold = (func) => {
+		var rec = (expr, ctx, path) => {
+			if(ctx === undefined) ctx = [];
+			if(path === undefined) path = [];
+			switch(e.kind){
+					// non-recursive cases are all the same
+				case 'star':
+				case 'hole':
+				case 'hash':
+				case 'ref':
+				case 'rec':
+					return func(expr, ctx, path, {});
+					// recursive cases are all quite similar
+				case 'type': return func(expr, ctx, path, {
+					type: rec(expr.type, ctx, [...path, 'type']),
+					body: rec(expr.body, ctx, [...path, 'body']),
+				});
+				case 'app': return func(expr, ctx, path, {
+					func: rec(expr.func, ctx, [...path, 'func']),
+					arg: rec(expr.arg, ctx, [...path, 'arg']),
+				});
+					// except additional context for pi and lam bodies
+				case 'pi':
+				case 'lam': return func(expr, ctx, path, {
+					type: rec(expr.type, ctx, [...path, 'type']),
+					body: rec(expr.body, [expr, ...ctx], [...path, 'body']),
+				});
+				default:
+					throw({kind: 'Invalid Kind', expr: expr});
+			}
+		};
+		return rec;
+	};
+
 	// absolutely minimal unambiguous "pretty" printing
 	var pretty = r.pretty = (e) => {
 		var indent = (s) => s.replace(/\n/g, '\n  ');
