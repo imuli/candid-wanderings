@@ -120,7 +120,6 @@ var Candid = (() => {
 				red = reduce(e.body,r);
 				break;
 		};
-		copynotes(red, e);
 		return red;
 	};
 
@@ -149,16 +148,6 @@ var Candid = (() => {
 		case 'app':  r = App(over(ref,rec,c,e.func), over(ref,rec,c,e.arg), e.name); break;
 		case 'type': r = Type(over(ref,rec,c,e.type), over(ref,rec,c,e.body), e.name); break;
 		};
-		copynotes(r, e);
-		return r;
-	};
-
-	// copy notes from e to r (usually it's replacement)
-	// like r.note = e.note, but better
-	var copynotes = (r,e) => {
-		if(r == Star || r.kind == 'hole') return r; // constants don't get notes
-		if(r.note == e.note) return r;
-		r.note = r.note === undefined ? e.note : e.note === undefined ? r.note : e.note + '\n' + r.note;
 		return r;
 	};
 
@@ -420,26 +409,26 @@ var Candid = (() => {
 				var type = store(e.type);
 				var body = unwrap(store(e.body));
 				if(type != e.type || body != e.body)
-					e = copynotes(Type(type, body, e.name), e);
+					e = Type(type, body, e.name);
 				replace = true;
 				break;
 		case 'app':
 				var func = store(e.func);
 				var arg = store(e.arg);
 				if(func != e.func || arg != e.arg)
-					e = copynotes(App(func, arg, e.name), e);
+					e = App(func, arg, e.name);
 				break;
 		case 'pi':
 				var type = store(e.type);
 				var body = store(e.body);
 				if(type != e.type || body != e.body)
-					e = copynotes(Pi(type, body, e.argname, e.name), e);
+					e = Pi(type, body, e.argname, e.name);
 				break;
 		case 'lam':
 				var type = store(e.type);
 				var body = store(e.body);
 				if(type != e.type || body != e.body)
-					e = copynotes(Lam(type, body, e.argname, e.name), e);
+					e = Lam(type, body, e.argname, e.name);
 				break;
 		};
 		if(closed(e) >= 0) return e;
@@ -511,25 +500,25 @@ var Candid = (() => {
 				var type = unhash(e.type);
 				var body = unhash(e.body);
 				if(type != e.type || body != e.body)
-					e = copynotes(Type(type, body, e.name), e);
+					e = Type(type, body, e.name);
 				break;
 		case 'app':
 				var func = unhash(e.func);
 				var arg = unhash(e.arg);
 				if(func != e.func || arg != e.arg)
-					e = copynotes(App(func, arg, e.name), e);
+					e = App(func, arg, e.name);
 				break;
 		case 'pi':
 				var type = unhash(e.type);
 				var body = unhash(e.body);
 				if(type != e.type || body != e.body)
-					e = copynotes(Pi(type, body, e.argname, e.name), e);
+					e = Pi(type, body, e.argname, e.name);
 				break;
 		case 'lam':
 				var type = unhash(e.type);
 				var body = unhash(e.body);
 				if(type != e.type || body != e.body)
-					e = copynotes(Lam(type, body, e.argname, e.name), e);
+					e = Lam(type, body, e.argname, e.name);
 				break;
 		};
 		return e;
@@ -538,7 +527,7 @@ var Candid = (() => {
 	// hash the parts of an expression that are in the store
 	var enhash = r.enhash = (e) => {
 		if(fetch(hash(e)))
-			return copynotes(Hash(hash(e), e.name), e);
+			return Hash(hash(e), e.name);
 		switch(e.kind){
 		case 'star':
 		case 'ref':
@@ -550,25 +539,25 @@ var Candid = (() => {
 				var type = enhash(e.type);
 				var body = enhash(e.body);
 				if(type != e.type || body != e.body)
-					e = copynotes(Type(type, body, e.name), e);
+					e = Type(type, body, e.name);
 				break;
 		case 'app':
 				var func = enhash(e.func);
 				var arg = enhash(e.arg);
 				if(func != e.func || arg != e.arg)
-					e = copynotes(App(func, arg, e.name), e);
+					e = App(func, arg, e.name);
 				break;
 		case 'pi':
 				var type = enhash(e.type);
 				var body = enhash(e.body);
 				if(type != e.type || body != e.body)
-					e = copynotes(Pi(type, body, e.argname, e.name), e);
+					e = Pi(type, body, e.argname, e.name);
 				break;
 		case 'lam':
 				var type = enhash(e.type);
 				var body = enhash(e.body);
 				if(type != e.type || body != e.body)
-					e = copynotes(Lam(type, body, e.argname, e.name), e);
+					e = Lam(type, body, e.argname, e.name);
 				break;
 		};
 		return e;
@@ -801,9 +790,6 @@ var Candid = (() => {
 	};
 
 	// helper functions (and objects) for building expressions.
-	// these are not the only way to build expressions!
-	// and do not perscribe which values may take which arguments
-	// in particular, all values will eventually have `hash` may have a `note`
 	var Hole = r.Hole = ({ kind: 'hole' });
 	var Star = r.Star = ({ kind: 'star' });
 	var Ref  = r.Ref  = (n) => ({ kind: 'ref', value: n });
