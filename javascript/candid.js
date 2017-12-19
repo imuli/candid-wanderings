@@ -244,8 +244,8 @@ var Candid = (() => {
 				var argType = typecheck(expr.arg, ctx);
 				return typeAt(rest, expr.func, ctx, Pi(argType, shift(1, wish)));
 			case 'app|arg':
-				var funcType = typecheck(expr.func, ctx);
-				if(funcType.kind != 'pi') return Hole;
+				var funcType = unwrap(typecheck(expr.func, ctx));
+				if(funcType.kind != 'pi') return {type: Hole, ctx: ctx};
 				return typeAt(rest, expr.arg, ctx, funcType.type);
 		};
 		throw { kind: 'Invalid Path', ctx: ctx, exp: expr, path: path };
