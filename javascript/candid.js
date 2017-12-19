@@ -216,7 +216,7 @@ var Candid = (() => {
 
 	var typeAt = r.typeAt = (path, expr, ctx, wish) => {
 		if(ctx === undefined) ctx = [];
-		if(wish === undefined) wish = Hole("");
+		if(wish === undefined) wish = Hole;
 		if(path.length == 0) return {type: wish, ctx: ctx};
 		var step = path[0];
 		var rest = path.slice(1);
@@ -236,7 +236,7 @@ var Candid = (() => {
 				if(wish.kind == 'pi')
 					subwish = wish.body;
 				else
-					subwish = Hole('');;
+					subwish = Hole;
 				return typeAt(rest, expr.body, [expr, ...ctx], subwish);
 			case 'type|body':
 				return typeAt(rest, expr.body, ctx, expr.type);
@@ -245,7 +245,7 @@ var Candid = (() => {
 				return typeAt(rest, expr.func, ctx, Pi(argType, shift(1, wish)));
 			case 'app|arg':
 				var funcType = typecheck(expr.func, ctx);
-				if(funcType.kind != 'pi') return Hole("");
+				if(funcType.kind != 'pi') return Hole;
 				return typeAt(rest, expr.arg, ctx, funcType.type);
 		};
 		throw { kind: 'Invalid Path', ctx: ctx, exp: expr, path: path };
@@ -707,7 +707,7 @@ var Candid = (() => {
 		st.offset++;
 		switch(c){
 		case '*': return Star;
-		case '_': return Hole();
+		case '_': return Hole;
 		case ':': return Type(fromUTF16(s,st), fromUTF16(s,st));
 		case '#': return Hash(hashFromUTF16(s, st));
 		case '!': return Ref(natFromUTF16(s, st));
@@ -804,7 +804,7 @@ var Candid = (() => {
 	// these are not the only way to build expressions!
 	// and do not perscribe which values may take which arguments
 	// in particular, all values will eventually have `hash` may have a `note`
-	var Hole = r.Hole = (h) => ({ kind: 'hole', hold: h });
+	var Hole = r.Hole = ({ kind: 'hole' });
 	var Star = r.Star = ({ kind: 'star' });
 	var Ref  = r.Ref  = (n) => ({ kind: 'ref', value: n });
 	var Rec  = r.Rec  = (n) => ({ kind: 'rec', value: n });

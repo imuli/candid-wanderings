@@ -1,8 +1,8 @@
 var E = Inferno.createElement;
 var state =
 	{	focus: ['edit'],
-		yank: {expr: Candid.Hole(''), ctx: []},
-		expr: Candid.Hole(''),
+		yank: {expr: Candid.Hole, ctx: []},
+		expr: Candid.Hole,
 	};
 
 var focus = (path) => (event) => {
@@ -179,7 +179,7 @@ var reEdit = (path, refrec, ctx) => {
 			case event.key == 'Escape':
 			case event.key == 'ArrowUp':
 				state.focus = path.slice(0,-1);
-				state.expr = Candid.update(state.expr, _path.slice(0,-1), Candid.Hole(''));
+				state.expr = Candid.update(state.expr, _path.slice(0,-1), Candid.Hole);
 				break;
 			case event.key == 'Enter':
 				// select the first non-dim match TODO hackish
@@ -262,7 +262,7 @@ var exprEdit = (path, expr, ctx, paren) => {
 				break;
 			case event.type == 'keydown' && event.key == 'Backspace':
 				if(_path.length == 0){
-					state.expr = Candid.Hole('');
+					state.expr = Candid.Hole;
 					break;
 				}
 				var mpath = _path[_path.length-1];
@@ -301,7 +301,7 @@ var exprEdit = (path, expr, ctx, paren) => {
 				shiftFocus(toNext, path);
 				break;
 			case event.key == '_': // _ from haskell, etc
-				state.expr = Candid.update(e, _path, Candid.Hole(''));
+				state.expr = Candid.update(e, _path, Candid.Hole);
 				break;
 			// unary expressions
 			case event.key == 'e': // hash lookup
@@ -320,39 +320,39 @@ var exprEdit = (path, expr, ctx, paren) => {
 			case event.key == 'f': // function
 			case event.key == '\\': // \ from haskell, etc
 			case event.key == 'λ': // lambda
-				state.expr = Candid.update(e, _path, Candid.Lam(expr, Candid.Hole('')));
+				state.expr = Candid.update(e, _path, Candid.Lam(expr, Candid.Hole));
 				state.focus = [...path, path.length == 1 ? 'name' : 'argname'];
 				break;
 			case event.key == 'F': // Function
 			case event.key == 'Λ': // Lambda
-				state.expr = Candid.update(e, _path, Candid.Lam(Candid.Hole(''), Candid.shift(1, expr)));
+				state.expr = Candid.update(e, _path, Candid.Lam(Candid.Hole, Candid.shift(1, expr)));
 				state.focus = [...path, path.length == 1 ? 'name' : 'argname'];
 				break;
 			case event.key == 'p': // pi
 			case event.key == 'π': // pi
-				state.expr = Candid.update(e, _path, Candid.Pi(expr, Candid.Hole('')));
+				state.expr = Candid.update(e, _path, Candid.Pi(expr, Candid.Hole));
 				state.focus = [...path, path.length == 1 ? 'name' : 'argname'];
 				break;
 			case event.key == 'P': // Pi
 			case event.key == 'Π': // Pi
-				state.expr = Candid.update(e, _path, Candid.Pi(Candid.Hole(''), Candid.shift(1, expr)));
+				state.expr = Candid.update(e, _path, Candid.Pi(Candid.Hole, Candid.shift(1, expr)));
 				state.focus = [...path, path.length == 1 ? 'name' : 'argname'];
 				break;
 			case event.key == 't': // type
-				state.expr = Candid.update(e, _path, Candid.Type(expr, Candid.Hole('')));
+				state.expr = Candid.update(e, _path, Candid.Type(expr, Candid.Hole));
 				state.focus = [...path, expr.kind == 'hole' ? 'type' : 'body'];
 				break;
 			case event.key == 'T': // Type
-				state.expr = Candid.update(e, _path, Candid.Type(Candid.Hole(''), expr));
+				state.expr = Candid.update(e, _path, Candid.Type(Candid.Hole, expr));
 				state.focus = [...path, 'type'];
 				break;
 			case event.key == 'a': // apply
 			case event.key == '(':
-				state.expr = Candid.update(e, _path, Candid.App(expr, Candid.Hole('')));
+				state.expr = Candid.update(e, _path, Candid.App(expr, Candid.Hole));
 				state.focus = [...path, expr.kind == 'hole' ? 'func' : 'arg'];
 				break;
 			case event.key == 'A': // Apply
-				state.expr = Candid.update(e, _path, Candid.App(Candid.Hole(''), expr));
+				state.expr = Candid.update(e, _path, Candid.App(Candid.Hole, expr));
 				state.focus = [...path, 'func'];
 				break;
 			// convenience
@@ -388,7 +388,7 @@ var exprEdit = (path, expr, ctx, paren) => {
 					state.focus = ['edit', ..._path.slice(0,-1), 'arg'];
 					break;
 				}
-				state.expr = Candid.update(e, _path, Candid.App(expr, Candid.Hole('')));
+				state.expr = Candid.update(e, _path, Candid.App(expr, Candid.Hole));
 				state.focus = ['edit', ..._path, 'arg']
 				break;
 			// yank buffer interaction
