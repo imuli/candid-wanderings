@@ -314,17 +314,16 @@ var Candid = (() => {
 
 	// return the depth of πs and λs this expression must be closed within
 	var closed = r.closed = (e) => {
-		if(e.closed !== undefined) return e.closed;
 		switch(e.kind){
 		case 'star': return -1;
 		case 'hole': return -1;
-		case 'type': e.closed = Math.max(closed(e.type), closed(e.body)); return e.closed;
+		case 'type': return Math.max(closed(e.type), closed(e.body));
 		case 'hash': return -1;
 		case 'ref': return e.value;
 		case 'rec': return e.value;
-		case 'app': e.closed = Math.max(closed(e.func), closed(e.arg)); return e.closed;
+		case 'app': return Math.max(closed(e.func), closed(e.arg));
 		case 'pi':
-		case 'lam': e.closed = Math.max(closed(e.type), closed(e.body)-1); return e.closed;
+		case 'lam': return Math.max(closed(e.type), closed(e.body)-1);
 		default: throw "Type Error";
 		}
 	};
@@ -365,7 +364,6 @@ var Candid = (() => {
 		// at the end of the path, replace
 		if(path.length == 0) return repl;
 		expr[path[0]] = _update(expr[path[0]], path.slice(1), repl);
-		delete(expr.closed)
 		return expr;
 	}
 
