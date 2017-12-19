@@ -139,16 +139,15 @@ var Candid = (() => {
 
 	// helper function for shift and replace
 	var over = (ref, rec, c, e) => {
-		var r = e;
 		switch(e.kind){
-		case 'ref':  r = ref(e, c); break;
-		case 'rec':  r = rec(e, c); break;
-		case 'pi':   r = Pi(over(ref,rec,c,e.type), over(ref,rec,c+1,e.body), e.argname, e.name); break;
-		case 'lam':  r = Lam(over(ref,rec,c,e.type), over(ref,rec,c+1,e.body), e.argname, e.name); break;
-		case 'app':  r = App(over(ref,rec,c,e.func), over(ref,rec,c,e.arg), e.name); break;
-		case 'type': r = Type(over(ref,rec,c,e.type), over(ref,rec,c,e.body), e.name); break;
+			case 'ref':  return ref(e, c);
+			case 'rec':  return rec(e, c);
+			case 'pi':   return Pi(over(ref,rec,c,e.type), over(ref,rec,c+1,e.body), e.argname, e.name);
+			case 'lam':  return Lam(over(ref,rec,c,e.type), over(ref,rec,c+1,e.body), e.argname, e.name);
+			case 'app':  return App(over(ref,rec,c,e.func), over(ref,rec,c,e.arg), e.name);
+			case 'type': return Type(over(ref,rec,c,e.type), over(ref,rec,c,e.body), e.name);
+			default: return e;
 		};
-		return r;
 	};
 
 	// type check expression within context
