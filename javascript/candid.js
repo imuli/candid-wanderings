@@ -221,10 +221,8 @@ var Candid = (() => {
 		var step = path[0];
 		var rest = path.slice(1);
 		switch(expr.kind + '|' + step){
-			case 'lam|type':
-				if(wish.kind == 'pi')
-					return typeAt(rest, expr.type, ctx, wish.type);
 			case 'pi|type':
+			case 'lam|type':
 			case 'type|type':
 				return typeAt(rest, expr.type, ctx, Star);
 			case 'pi|body':
