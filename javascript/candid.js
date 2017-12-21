@@ -240,8 +240,33 @@ var Candid = (() => {
 	};
 
 	// check a type pattern from typeAt matches type
-	var typeMatch = r.typeMatch = (pattern, type) =>
-		ceq(pattern, type, [], [], (x) => x.kind == 'hole' ? true : undefined);
+	var typeMatch = r.typeMatch = (pattern, type, pctx, tctx) =>
+		ceq(pattern, type, pctx || [], tctx || [], (x) => x.kind == 'hole' ? true : undefined);
+
+	var derive = r.derive = (type, ctx) => {
+		var solutions = [];
+		var propose = (solution) => {
+			try {
+				if(typeMatch(type, typecheck(solution, ctx), ctx, ctx)){
+					solutions.push(solution);
+				}
+			} catch(e) {
+				console.warn(e);
+			}
+		};
+
+		for(var i = 0; i < ctx.length; i++){
+			propose(Ref(i));
+			propose(Rec(i));
+		}
+		if(type.kind == 'pi'){
+			var more = derive(type.body, [type, ...ctx]);
+			for(var i = 0; i < more.length; i ++){
+				solutions.push(Lam(type.type, more[i]));
+			}
+		}
+		return solutions;
+	};
 
 	// contextual equivalence
 	var ceq = (e0, e1, p0, p1, test) => {
@@ -253,7 +278,7 @@ var Candid = (() => {
 			case 'type': return ceq(e0.type, e1.type, p0, p1, test) && ceq(e0.body, e1.body, p0, p1, test);
 			case 'hash': return eq(e0, e1);
 			case 'ref':
-			case 'rec': return e0.value == e1.value;
+			case 'rec': return e0.value - p0.length == e1.value - p1.length;
 			case 'app': return ceq(e0.func, e1.func, p0, p1, test) && ceq(e0.arg, e1.arg, p0, p1, test);
 			case 'pi':
 			case 'lam': return ceq(e0.type, e1.type, p0, p1, test) && ceq(e0.body, e1.body, [e0].concat(p0), [e1].concat(p1), test);
