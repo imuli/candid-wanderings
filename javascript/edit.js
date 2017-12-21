@@ -464,7 +464,7 @@ var exprEdit = (path, expr, ctx, paren) => {
 			stringEdit([...path, 'argname'], expr.argname),
 			expr.argname ? ' : ' : '',
 			exprEdit([...path, 'type'], expr.type, ctx, 1),
-			E('span', {className:'candid-arrow'}, expr.kind == 'lam' ? ' → ' : ' ⇒ '),
+			E('span', {className:'candid-arrow'}, expr.kind == 'lam' ? ' ⇒ ' : ' → '),
 			exprEdit([...path, 'body'], expr.body, [expr, ...ctx], 0),
 		));
 		case 'type': return p(1, ed({},

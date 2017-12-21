@@ -85,7 +85,7 @@ var viewExpr = ({expr, ctx, paren}) => {
 		expr.argname ? E('span',{style:colorExpr(expr.type, ctx)}, expr.argname) : '',
 		expr.argname ? ' : ' : '',
 		viewExpr({expr:expr.type, ctx:ctx, paren:1}),
-		expr.kind == 'lam' ? ' → ' : ' ⇒ ',
+		expr.kind == 'lam' ? ' ⇒ ' : ' → ',
 		viewExpr({expr:expr.body, ctx:[expr, ...ctx], paren:0}) ));
 	};
 };

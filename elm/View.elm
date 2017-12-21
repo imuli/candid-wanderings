@@ -159,7 +159,7 @@ viewExpr focus path expr context paren =
         Pi n a t b  -> row Plain [] <|
                        viewName n ++ viewArgname t a ++
                        [ viewSub Leftward t ctx 1
-                       , text " ⇒ "
+                       , text " → "
                        , viewSub Rightward b (expr :: ctx) 0
                        ]
         Type n t b  -> column Plain []
@@ -169,7 +169,7 @@ viewExpr focus path expr context paren =
         Lam n a t b -> row Plain [] <|
                        viewName n ++ viewArgname t a ++
                        [ viewSub Leftward t ctx 1
-                       , text " → "
+                       , text " ⇒ "
                        , viewSub Rightward b (expr :: ctx) 0
                        ]
 
