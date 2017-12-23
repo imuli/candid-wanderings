@@ -125,7 +125,7 @@ var State = (() => {
         return update(state, ['focus', state.focus.length-1], 'name');
       case 'type':
         if(state.focus[state.focus.length-2] == 'body')
-            return goLeft(goUp1(state));
+          return goLeft(goUp1(state));
         return state;
       case 'body':
         return goDownLeft(goUp1(state));
@@ -160,7 +160,7 @@ var State = (() => {
         return goDownRight(goUp1(state));
       case 'arg':
         if(state.focus[state.focus.length-2] == 'func')
-            return goDownRight(goUp1(goUp1(state)));
+          return goDownRight(goUp1(goUp1(state)));
         return state;
       case 'body':
       default:
@@ -243,42 +243,42 @@ var State = (() => {
 
   var replace = (state, repl) => update(state, ['exprs', ...state.focus], repl);
   var wrap = (state, kind, which) => {
-		var expr = Candid.shift(shift, lookup(state, state.focus).expr);
-		var repl, focus; 
-		switch(kind + '|' + which){
-			case 'pi|type':
-			case 'lam|type':
-				repl = {kind: kind, type: expr, body: Candid.Hole};
-				focus = state.focus.length == 1 ? 'name' : 'argname';
-				break;
-			case 'pi|body':
-			case 'lam|body':
-				repl = {kind: kind, type: Candid.Hole, body:Candid.shift(1, expr)};
-				focus = state.focus.length == 1 ? 'name' : 'argname';
-				break;
-			case 'type|type':
-				repl = {kind: kind, type: expr, body: Candid.Hole};
-				focus = state.focus.length == 1 ? 'name' : 'body';
-				break;
-			case 'type|body':
-				repl = {kind: kind, type: Candid.Hole, body: expr};
-				focus = state.focus.length == 1 ? 'name' : 'type';
-				break;
-			case 'app|func':
-				repl = {kind: kind, func: expr, arg: Candid.Hole};
-				focus = state.focus.length == 1 ? 'name' : 'arg';
-				break;
-			case 'app|arg':
-				repl = {kind: kind, func: Candid.Hole, arg: expr};
-				focus = state.focus.length == 1 ? 'name' : 'func';
-				break;
-			default:
-				throw 'Unknown wrap kind ' + kind;
-		}
-		return update(update(state,
-			['exprs', ...state.focus], repl),
-			['focus'], [...state.focus, focus]);
-	}
+    var expr = lookup(state, state.focus).expr;
+    var repl, focus; 
+    switch(kind + '|' + which){
+      case 'pi|type':
+      case 'lam|type':
+        repl = {kind: kind, type: expr, body: Candid.Hole};
+        focus = state.focus.length == 1 ? 'name' : 'argname';
+        break;
+      case 'pi|body':
+      case 'lam|body':
+        repl = {kind: kind, type: Candid.Hole, body:Candid.shift(1, expr)};
+        focus = state.focus.length == 1 ? 'name' : 'argname';
+        break;
+      case 'type|type':
+        repl = {kind: kind, type: expr, body: Candid.Hole};
+        focus = state.focus.length == 1 ? 'name' : 'body';
+        break;
+      case 'type|body':
+        repl = {kind: kind, type: Candid.Hole, body: expr};
+        focus = state.focus.length == 1 ? 'name' : 'type';
+        break;
+      case 'app|func':
+        repl = {kind: kind, func: expr, arg: Candid.Hole};
+        focus = state.focus.length == 1 ? 'name' : 'arg';
+        break;
+      case 'app|arg':
+        repl = {kind: kind, func: Candid.Hole, arg: expr};
+        focus = state.focus.length == 1 ? 'name' : 'func';
+        break;
+      default:
+        throw 'Unknown wrap kind ' + kind;
+    }
+    return update(update(state,
+      ['exprs', ...state.focus], repl),
+      ['focus'], [...state.focus, focus]);
+  }
 
   var toggleHash = (state) => {
     var {expr} = lookup(state, state.focus);
@@ -320,6 +320,7 @@ var State = (() => {
       toggleHash: toggleHash,
       remove: remove,
       replace: replace,
+      wrap: wrap,
     },
     str: {
       clear1: stringClear1,
