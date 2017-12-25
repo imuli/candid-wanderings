@@ -65,10 +65,10 @@ One might represent Candid's (and Morte's) inner calculus something like this:
 
 ```idris
 data Expr
-  = Lam (inType : Expr) (body : Expr)    -- inType → body
+  = Lam (inType : Expr) (body : Expr)    -- inType ⇒ body
   | Ref (n : Nat)                        -- n
   | App (func : Expr) (arg : Expr)       -- func arg
-  | Pi (inType : Expr) (outType : Expr)  -- inType ⇒ outType
+  | Pi (inType : Expr) (outType : Expr)  -- inType → outType
   | Star                                 -- *
 ```
 
@@ -89,7 +89,7 @@ data Expr
 With these one may define functions:
 
 ```
-id      = * → 0 → 0
+id      = * ⇒ 0 ⇒ 0
 ```
 
 `id` is the simplest function, it simply returns it's argument. However, as
@@ -100,7 +100,7 @@ first argument (which is a type) and the second to the second (which is a value
 of that type).
 
 ```
-Unit    = * ⇒ 0 ⇒ 1
+Unit    = * → 0 → 1
 ```
 
 `Unit` is the type of `id`, so named because `id` is the only one function of
@@ -108,9 +108,9 @@ that type. Here both `0` and `1` refer to the first argument, the type of the
 value given to and returned by `id`.
 
 ```
-Boolean = * ⇒ 0 ⇒ 1 ⇒ 2
-True    = * → 0 → 1 → 1
-False   = * → 0 → 1 → 0
+Boolean = * → 0 → 1 → 2
+True    = * ⇒ 0 ⇒ 1 ⇒ 1
+False   = * ⇒ 0 ⇒ 1 ⇒ 0
 ```
 
 `Boolean` has exactly two inhabitants, `True` and `False`, which one is which
@@ -118,8 +118,8 @@ is purely arbitrary, but, for our purposes, `True` returns the first value and
 `False` returns the second, and thus function application:
 
 ```
-or     = Boolean → Boolean → 1 Boolean True 0
-and    = Boolean → Boolean → 1 Boolean 0 False
+or     = Boolean ⇒ Boolean ⇒ 1 Boolean True 0
+and    = Boolean ⇒ Boolean ⇒ 1 Boolean 0 False
 ```
 
 `or` takes two `Boolean`s uses the first one to choose between `True` and the
@@ -134,9 +134,9 @@ or a b = case a of
 
 `and` could be sugared in exactly the same way.
 
-Both are of the type `Boolean ⇒ Boolean ⇒ Boolean`. Note that above we don't
+Both are of the type `Boolean → Boolean → Boolean`. Note that above we don't
 make any allowances to refer to things by name in the data structure up above.
-`Boolean` here is just a placeholder for `* ⇒ 0 ⇒ 1 ⇒ 2`.
+`Boolean` here is just a placeholder for `* → 0 → 1 → 2`.
 
 For more examples of what you can do with this sort of minimal calculus of
 constructions, albeit with names instead of numbers, see the Morte
@@ -172,10 +172,10 @@ replaced with the argument, it is replaced with the function. `Type` is here to
 assist the type checker, so it can calculate the output types of a `Rec`.
 
 ```
-Nat = * ⇒ 0 ⇒ (@1 ⇒ 2) ⇒ 2
-Zero = * → 0 → (Nat ⇒ 2) → 1
-Succ = Nat → * → 0 → (Nat ⇒ 2) → 0 3
-add = Nat → Nat → Nat | 0 Nat 1 (@1 (Succ 1))
+Nat = * → 0 → (@1 → 2) → 2
+Zero = * ⇒ 0 ⇒ (Nat → 2) ⇒ 1
+Succ = Nat ⇒ * ⇒ 0 ⇒ (Nat → 2) ⇒ 0 3
+add = Nat ⇒ Nat ⇒ Nat | 0 Nat 1 (@1 (Succ 1))
 ```
 
 This is the recursive version of Nat, which sugars to:
@@ -189,19 +189,19 @@ add n m = case m of
 ```
 
 Now all (or nearly all) the interesting things to do with `Nat`s can be done
-without this sort of recursion using `Nat = * ⇒ 0 ⇒ (1 ⇒ 2) ⇒ 2` on which
+without this sort of recursion using `Nat = * → 0 → (1 → 2) → 2` on which
 operations are provably total by dint of type checking. So consider...
 
 ```
-Expr = * ⇒
-       0 ⇒
-       1 ⇒
-       (Nat ⇒ 3) ⇒
-       (Nat ⇒ 4) ⇒
-       (@4 ⇒ @5 ⇒ 6) ⇒
-       (@5 ⇒ @6 ⇒ 7) ⇒
-       (@6 ⇒ @7 ⇒ 8) ⇒
-       (@7 ⇒ @8 ⇒ 9) ⇒
+Expr = * →
+       0 →
+       1 →
+       (Nat → 3) →
+       (Nat → 4) →
+       (@4 → @5 → 6) →
+       (@5 → @6 → 7) →
+       (@6 → @7 → 8) →
+       (@7 → @8 → 9) →
        8
 ```
 
@@ -255,22 +255,22 @@ data Axis = X | Y | Z
 and any other enumerated type with three values:
 
 ```
-Ternary = * ⇒ 0 ⇒ 1 ⇒ 2 ⇒ 3
-Zero = * → 0 → 1 → 2 → 2
-One = * → 0 → 1 → 2 → 1
-Two = * → 0 → 1 → 2 → 0
+Ternary = * → 0 → 1 → 2 → 3
+Zero = * ⇒ 0 ⇒ 1 ⇒ 2 ⇒ 2
+One = * ⇒ 0 ⇒ 1 ⇒ 2 ⇒ 1
+Two = * ⇒ 0 ⇒ 1 ⇒ 2 ⇒ 0
 ```
 
 This means that our type checker loses the power to distinguish between `Axis`
 and `Ordering`.  There are a number of ways to regain this power, and one
 requires nothing extra from the language, introducing a singleton into the type.
 
-There are an infinite number of singleton types. `* ⇒ 0 ⇒ 1` is the simplest and
-most obvious, but `* ⇒ * ⇒ 1 ⇒ 2` is much the same. While one could go on
+There are an infinite number of singleton types. `* → 0 → 1` is the simplest and
+most obvious, but `* → * → 1 → 2` is much the same. While one could go on
 forever just adding intermediate type arguments, consider the type:
 
 ```
-* ⇒ * ⇒ * ⇒ * ⇒ (4 ⇒ 3 ⇒ 2 ⇒ 4 ⇒ 6) ⇒ 1 ⇒ 2
+* → * → * → * → (4 → 3 → 2 → 4 → 6) → 1 → 2
 ```
 
 So long as the arguments to the function and the value argument are not all of
@@ -278,7 +278,7 @@ the same type, there is obviously only one possible function with that type, in
 this case:
 
 ```
-* → * → * → * → (4 ⇒ 3 ⇒ 2 ⇒ 4 ⇒ 6) → 1 → 0
+* ⇒ * ⇒ * ⇒ * ⇒ (4 → 3 → 2 → 4 → 6) ⇒ 1 ⇒ 0
 ```
 
 With $n$ type arguments and $m$ arguments to the function, this yields
@@ -287,20 +287,20 @@ $n^{m+2}-n$ unique singleton types, 4092 for the model above.
 So to make a type unique, one simply prepends a unique singleton type.
 
 ```
-Axis = (* ⇒ * ⇒ * ⇒ * ⇒ (4 ⇒ 3 ⇒ 2 ⇒ 4 ⇒ 6) ⇒ 1 ⇒ 2) ⇒ * ⇒ 0 ⇒ 1 ⇒ 2 ⇒ 3
-X = (* ⇒ * ⇒ * ⇒ * ⇒ (4 ⇒ 3 ⇒ 2 ⇒ 4 ⇒ 6) ⇒ 1 ⇒ 2) → * → 0 → 1 → 2 → 2
+Axis = (* → * → * → * → (4 → 3 → 2 → 4 → 6) → 1 → 2) → * → 0 → 1 → 2 → 3
+X = (* → * → * → * → (4 → 3 → 2 → 4 → 6) → 1 → 2) ⇒ * ⇒ 0 ⇒ 1 ⇒ 2 ⇒ 2
 ```
 
 As there is only one possible value for the singleton type, it can be filled in
 automatically (and hidden) by a sufficiently smart editor. During type checking
 this will ensure that `X` isn't used in place of `LT` or vice versa, and it will
 be optimized away with partial evaluation during compilation, producing the
-exact same code as `Axis = *  ⇒ 0 ⇒ 1 ⇒ 2 ⇒ 3`.
+exact same code as `Axis = *  → 0 → 1 → 2 → 3`.
 
 Note this also allows one to specify a function:
 
 ```
-(* ⇒ 0 ⇒ 1 ⇒ 2 ⇒ 2) → (* ⇒ * ⇒ * ⇒ * ⇒ (4 ⇒ 3 ⇒ 2 ⇒ 4 ⇒ 6) ⇒ 1 ⇒ 2) → 1
+(* → 0 → 1 → 2 → 2) ⇒ (* → * → * → * → (4 → 3 → 2 → 4 → 6) → 1 → 2) ⇒ 1
 ```
 
 which turns an `Ordering` into an `Axis`, much like the lone constructor in Haskell's `newtype`.
@@ -332,7 +332,7 @@ to fit in the hole.
 
 ### What to do about Universes
 
-Informally, `★` is the type of `★` and `★ ⇒ ★` and the like. In reality, stars
+Informally, `★` is the type of `★` and `★ → ★` and the like. In reality, stars
 are paramaterized over natural numbers, such that the type of `★ₙ`  is `★ₙ₊₁`.
 This is to prevent inconsistancy due to Girard's Paradox.
 
@@ -348,27 +348,27 @@ conventional definition of `Bool` as a dependant type, and cannot even convert a
 value `Bool` to a type-level `Bool`:
 
 ```
-Bool = t:★ ⇒ true:t ⇒ false:t ⇒ t
-True = t:★ → true:t → false:t → true
-False = t:★ → true:t → false:t → false
+Bool = t:★ → true:t → false:t → t
+True = t:★ ⇒ true:t ⇒ false:t ⇒ true
+False = t:★ ⇒ true:t ⇒ false:t ⇒ false
 
-<s>x:Bool ⇒ x ★ Bool Nat</s>
+<s>x:Bool → x ★ Bool Nat</s>
 
-Bool★ = true:★ ⇒ false:★ ⇒ ★
-True★ = true:★ → false:★ → true
-False★ = true:★ → false:★ → false
+Bool★ = true:★ → false:★ → ★
+True★ = true:★ ⇒ false:★ ⇒ true
+False★ = true:★ ⇒ false:★ ⇒ false
 
-<s>Bool★fromBool = bool:Bool → bool Bool★ True★ False★</s>
+<s>Bool★fromBool = bool:Bool ⇒ bool Bool★ True★ False★</s>
 ```
 
 With universe inference it just looks like this:
 
 ```
-Boolₙ = t:★ₙ ⇒ true:t ⇒ false:t ⇒ t
-Trueₙ = t:★ₙ → true:t → false:t → true
-Falseₙ = t:★ₙ → true:t → false:t → false
+Boolₙ = t:★ₙ → true:t → false:t → t
+Trueₙ = t:★ₙ ⇒ true:t ⇒ false:t ⇒ true
+Falseₙ = t:★ₙ ⇒ true:t ⇒ false:t ⇒ false
 
-x:Boolₙ₊₊ ⇒ x ★ₙ Boolₙ Natₙ
+x:Boolₙ₊₊ → x ★ₙ Boolₙ Natₙ
 ```
 
 ### Programs for Free
@@ -376,44 +376,44 @@ x:Boolₙ₊₊ ⇒ x ★ₙ Boolₙ Natₙ
 Consider the type `Map`, which is the type of a `map` function for the type `m`:
 
 ```
-Map = m:(★ ⇒ ★) → t:★ ⇒ s:★ ⇒ fun:(t ⇒ s) ⇒ val:(m t) ⇒ m s
+Map = m:(★ → ★) ⇒ t:★ → s:★ → fun:(t → s) → val:(m t) → m s
 ```
 
 For each type `m` there will be a few possible programs that satisfy that type.
 For instance given the type `Maybe` and it's constructors `Nothing` and `Just`:
 
 ```
-Maybe = t:★ → ★
-	s:★ ⇒ nothing:s ⇒ just:(t ⇒ s) ⇒ s
-Nothing = t:★ → Maybe t
-	s:★ → nothing:s → just:(t ⇒ s) → nothing
-Just = t:★ → x:t → Maybe t
-	s:★ → nothing:s → just:(t ⇒ s) → just x
+Maybe = t:★ ⇒ ★
+	s:★ → nothing:s → just:(t → s) → s
+Nothing = t:★ ⇒ Maybe t
+	s:★ ⇒ nothing:s ⇒ just:(t → s) ⇒ nothing
+Just = t:★ ⇒ x:t ⇒ Maybe t
+	s:★ ⇒ nothing:s ⇒ just:(t → s) ⇒ just x
 ```
 
 Our `map` function will have the type `Map Maybe`:
 
 ```
 Map Maybe = ★
-	t:★ ⇒ s:★ ⇒ fun:(t ⇒ s) ⇒ val:(Maybe t) ⇒ Maybe s
+	t:★ → s:★ → fun:(t → s) → val:(Maybe t) → Maybe s
 ```
 
 We need a `Maybe s`, which we can get via `Nothing s` and `Just s y`, where `y`
 is of type `s`. so one obvious (and wrong) option is:
 
 ```
-map' = t:★ → s:★ → fun:(t ⇒ s) → val:(Maybe t) → Maybe s
+map' = t:★ ⇒ s:★ ⇒ fun:(t → s) ⇒ val:(Maybe t) ⇒ Maybe s
 	Nothing s
 ```
 
-However we also have `fun:(t ⇒ s)` and `val:(Maybe t)`. Either `val` is a
+However we also have `fun:(t → s)` and `val:(Maybe t)`. Either `val` is a
 `Nothing t`, in which case our only option is to use `Nothing s`, or it is a
-`Just t x`, in which case we have have two options, `Nothing s` and `(x:t → Just
+`Just t x`, in which case we have have two options, `Nothing s` and `(x:t ⇒ Just
 s (fun x))`. This points to the actual `map` function between `Maybe`s:
 
 ```
-map = t:★ → s:★ → fun:(t ⇒ s) → val:(Maybe t) → Maybe s
-	val (Maybe s) (Nothing s) (x:t → Just s (fun x))
+map = t:★ ⇒ s:★ ⇒ fun:(t → s) ⇒ val:(Maybe t) ⇒ Maybe s
+	val (Maybe s) (Nothing s) (x:t ⇒ Just s (fun x))
 ```
 
 The heuristic here is to prefer solutions that use more arguments. If the type
@@ -426,22 +426,22 @@ with a particular type, the editor could just fill it in.
 Sometimes though, there are more than just a few options.
 
 ```
-List = t:★ → ★
-	r:★ ⇒ nil:r ⇒ cons:(r ⇒ t ⇒ r) ⇒ r
-Nil = t:★ → List t
-	r:★ → nil:r → cons:(r ⇒ t ⇒ r) → nil
-Cons = t:★ → a:t → list:(List t) → List t
-	r:★ → nil:r → cons:(r ⇒ t ⇒ r) → cons (list r nil cons) a
+List = t:★ ⇒ ★
+	r:★ → nil:r → cons:(r → t → r) → r
+Nil = t:★ ⇒ List t
+	r:★ ⇒ nil:r ⇒ cons:(r → t → r) ⇒ nil
+Cons = t:★ ⇒ a:t ⇒ list:(List t) ⇒ List t
+	r:★ ⇒ nil:r ⇒ cons:(r → t → r) ⇒ cons (list r nil cons) a
 ```
 
-The type `t:★ ⇒ xs:(List t) ⇒ List t` has countably infinite different
+The type `t:★ → xs:(List t) → List t` has countably infinite different
 inhabitants. At the simplest there are `Nil t` and `xs`, for a little more
 effort any other duplication and/or permutation of `xs` works too. Thus we
 cannot present every solution - rather we must take the first few results of a
 breadth first search for solutions.
 
-Note that if there are infinite inhabitants of `List t ⇒ List t` than there are
-likewise infinite inhabitants of `List t ⇒ List s`. Note also that there are
+Note that if there are infinite inhabitants of `List t → List t` than there are
+likewise infinite inhabitants of `List t → List s`. Note also that there are
 infinite programs equivalent to any other program, simply by encapsulating the
 program in an `id`. A properly defined breadth first search will relegate those
 solutions to later on, where they will usually not even be enumerated.
