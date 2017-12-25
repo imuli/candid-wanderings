@@ -1,10 +1,21 @@
 /*
-var state = {
-  exprs: [];
-  focus: [];
+var Editor = {
+	expr: expr;
+	focus: [step];
+}
+var State = {
+	edits: [Editor];
+  focus: number;
 };
 */
 var State = (() => {
+  var getArray = (arr, [step, ...rest], getElem) => {
+    if(step === undefined){
+      return arr;
+    }
+		return getElem(arr[step], rest);
+  };
+
   var updateArray = (state, [step, ...rest], repl, updateElem) => {
     if(step === undefined){
       if(repl.constructor == Array) return repl;
@@ -15,32 +26,82 @@ var State = (() => {
     return n;
   };
 
-  var update = (state, [step, ...rest], repl) => {
-    switch(step){
-      case undefined:
-        if(repl.exprs.constructor == Array
-          && repl.exprs.constructor == Array
-        ) return repl;
-        return state;
+	var getEditor = (editor, [step, ...rest]) => {
+		switch(step){
       case 'focus':
-        return {
-          exprs: state.exprs,
-          focus: updateArray(state.focus, rest, repl, (st, path, repl) => repl),
-        };
-      case 'exprs':
-        return {
-          exprs: updateArray(state.exprs, rest, repl, Candid.update),
-          focus: state.focus,
-        };
-      default:
+        return editor.focus;
+      case 'expr':
+				return Candid.lookup(editor.expr, rest);
+			case undefined:
+				return editor;
+			default:
+        throw "Bad Path: " + step;
+		};
+	};
+
+	var updateEditor = (editor, [step, ...rest], repl) => {
+		switch(step){
+      case 'focus':
+        return Object.assign({}, editor, {
+					focus: updateArray(editor.exprs, rest, repl, (orig, path, repl) => repl),
+				});
+      case 'expr':
+        return Object.assign({}, editor, {
+          expr: Candid.update(editor.expr, rest, repl),
+				});
+			case undefined:
+				return Object.assign({}, editor, repl);
+			default:
+        throw "Bad Path: " + step;
+		};
+	};
+
+  var get = (state, [step, ...rest]) => {
+    switch(step){
+      case 'focus':
+        return state.focus
+      case 'edits':
+				return getArray(state.edits, rest, getEditor);
+      case undefined:
         return state;
-    }
+      default:
+        throw "Bad Path: " + step;
+    };
   };
 
-  var lookup = (state, [step, ...rest]) => {
-    if(state.exprs[step] === undefined) throw "Bad Path: " + step;
-    return Candid.lookup(state.exprs[step], rest);
+  var update = (state, [step, ...rest], repl) => {
+    switch(step){
+      case 'focus':
+        return Object.assign({}, state, {focus: repl});
+      case 'edits':
+        return Object.assign({}, state, {
+          edits: updateArray(state.edits, rest, repl, updateEditor),
+				});
+      case undefined:
+				return Object.assign({}, state, repl);
+      default:
+        throw "Bad Path: " + step;
+    };
   };
+
+	var addEdit = (state, expr, focus) => {
+		if(focus === undefined) focus = [];
+		if(expr === undefined) expr = Candid.Hole;
+		return update(state, ['edits'], [...state.edits, {expr: expr, focus: focus}]);
+	};
+
+	var edit = (state, path, repl) => update(state, ['edits', state.focus, ...path], repl);
+	var getEdit = (state, path) => get(state, ['edits', state.focus, ...path]);
+	var addFocus = (state, ...more) => edit(state, ['focus'], [...getEdit(state, ['focus']), ...more]);
+	var getFocus = (state) => state.edits[state.focus].focus;
+	var getFocusExpr = (state) => get(state, ['edits', state.focus, 'expr', ...state.edits[state.focus].focus]);
+	var lastStep = (state, n) => {
+		if(n === undefined) n = 1;
+		var focus = state.edits[state.focus].focus;
+		return focus[focus.length-n];
+	};
+
+  var lookup = (state, path) => getEdit(state, ['expr', ...path]);
 
   var compose = (first, then) => (state) => then(first(state));
 
@@ -52,79 +113,77 @@ var State = (() => {
     }
   };
 
-  var goUp1 = (state) => state.focus.length <= 1 ? state : {
-    focus: state.focus.slice(0,-1),
-    exprs: state.exprs,
-  };
+	var goUp1 = (state) => {
+		var focus = getEdit(state, ['focus']);
+		if(focus.length == 0) return state;
+		return edit(state, ['focus'], focus.slice(0,-1));
+	};
 
-  var goPrev = (state) =>
-    state.focus[0] === undefined || (0|state.focus[0]) === 0 ? state
-      : update(state, ['focus'], [((0|state.focus[0]) - 1).toString()]);
+  var goPrev = (state) => state.focus === 0 ? state
+		: update(state, ['focus'], state.focus - 1);
 
-  var goNext = (state) =>
-    state.focus[0] === undefined || (0|state.focus[0]) === state.exprs.length - 1 ? state
-      : update(state, ['focus'], [((0|state.focus[0]) + 1).toString()]);
+  var goNext = (state) => state.focus === state.edits.length - 1 ? state
+      : update(state, ['focus'], state.focus + 1);
 
   var goName = (state) => {
-    var {expr} = Candid.lookup(state.exprs, state.focus);
+    var {expr} = getFocusExpr(state);
     switch(true){
       case expr && expr.kind == 'pi':
       case expr && expr.kind == 'lam':
       case expr && expr.kind == 'type':
       case expr && expr.kind == 'app':
       case expr && expr.kind == 'hash':
-        return update(state, ['focus'], [...state.focus, 'name']);
+        return addFocus(state, 'name');
       default:
         return state;
     }
   };
 
   var goArgName = (state) => {
-    var {expr} = Candid.lookup(state.exprs, state.focus);
+    var {expr} = getFocusExpr(state);
     switch(true){
       case expr && expr.kind == 'pi':
       case expr && expr.kind == 'lam':
-        return update(state, ['focus'], [...state.focus, 'argname']);
+        return addFocus(state, 'argname');
       default:
         return state;
     }
   };
 
   var goDownLeft = (state) => {
-    var {expr} = Candid.lookup(state.exprs, state.focus);
+    var {expr} = getFocusExpr(state);
     switch(true){
       case expr && expr.kind == 'pi':
       case expr && expr.kind == 'lam':
       case expr && expr.kind == 'type':
-        return update(state, ['focus'], [...state.focus, 'type']);
+        return addFocus(state, 'type');
       case expr && expr.kind == 'app':
-        return update(state, ['focus'], [...state.focus, 'func']);
+        return addFocus(state, 'func');
       default:
         return state;
     }
   };
 
   var goDownRight = (state) => {
-    var {expr} = Candid.lookup(state.exprs, state.focus);
+    var {expr} = getFocusExpr(state);
     switch(true){
       case expr && expr.kind == 'pi':
       case expr && expr.kind == 'lam':
       case expr && expr.kind == 'type':
-        return update(state, ['focus'], [...state.focus, 'body']);
+        return addFocus(state, 'body');
       case expr && expr.kind == 'app':
-        return update(state, ['focus'], [...state.focus, 'arg']);
+        return addFocus(state, 'arg');
       default:
         return state;
     }
   };
 
   var goLeft = (state) => {
-    var last = state.focus[state.focus.length-1];
-    switch(last){
+    switch(lastStep(state)){
       case 'argname':
-        return update(state, ['focus', state.focus.length-1], 'name');
+        return addFocus(goUp1(state), 'name');
       case 'type':
-        if(state.focus[state.focus.length-2] == 'body')
+        if(lastStep(state, 2) == 'body')
           return goLeft(goUp1(state));
         return state;
       case 'body':
@@ -138,28 +197,27 @@ var State = (() => {
   };
 
   var goRight = (state) => {
-    var last = state.focus[state.focus.length-1];
-    switch(last){
+    switch(lastStep(state)){
       case 'name':
-        var {expr} = Candid.lookup(state.exprs, state.focus.slice(0,-1));
+        var {expr} = getFocusExpr(goUp1(state));
         var into = {
           pi: 'argname',
           lam: 'argname',
           type: 'type',
           app: 'func',
         }[expr.kind];
-        return update(state, ['focus', state.focus.length-1], into);
+        return addFocus(goUp1(state), into);
       case 'type':
-        var {expr} = Candid.lookup(state.exprs, [...state.focus.slice(0,-1), 'body']);
+        var {expr} = getFocusExpr(addFocus(goUp1(state), 'body'));
         if(expr.body !== undefined)
           return goDownLeft(goDownRight(goUp1(state)));
         return goDownRight(goUp1(state));
       case 'argname':
-        return update(state, ['focus', state.focus.length-1], 'type');
+        return addFocus(goUp1(state), 'type');
       case 'func':
         return goDownRight(goUp1(state));
       case 'arg':
-        if(state.focus[state.focus.length-2] == 'func')
+        if(lastStep(state, 2) == 'func')
           return goDownRight(goUp1(goUp1(state)));
         return state;
       case 'body':
@@ -169,20 +227,20 @@ var State = (() => {
   };
 
   var goUp = (state) => {
-    var last = state.focus[state.focus.length-1];
     var match = {
       type: 'body', body: 'body',
       func: 'func', arg: 'func',
-    }[last];
+    }[lastStep(state)];
     if(match === undefined) return goUp1(state);
     // remove all instances of match from the end of the path
-    var i = state.focus.length-2;
-    while(state.focus[i] === match) i--;
-    return update(state, ['focus'], state.focus.slice(0,i+1));
+		var focus = getEdit(state, ['focus']);
+    var i = focus.length-2;
+    while(focus[i] === match) i--;
+    return edit(state, ['focus'], focus.slice(0,i+1));
   };
 
   var goDown = (state) => {
-    var {expr} = Candid.lookup(state.exprs, state.focus);
+    var {expr} = getFocusExpr(state);
     switch(true){
       case expr.kind == 'app':
         return goDown(goDownLeft(state));
@@ -202,26 +260,31 @@ var State = (() => {
   // expression manipulations
 
   var extractType = (state) => {
-    var {expr, ctx} = lookup(state, state.focus);
+    var {expr, ctx} = getFocusExpr(state)
     var type = Candid.typecheck(expr, ctx);
-    return update(state, ['exprs'], [...state.exprs, type]);
+    return addEdit(state, type);
   };
 
   var extractExpr = (state) => {
-    var {expr, ctx} = lookup(state, state.focus);
-    return update(state, ['exprs'], [...state.exprs, expr]);
+    var {expr, ctx} = getFocusExpr(state);
+    return addEdit(state, expr);
   };
 
+	var insertExpr = (state) => replace(state, state.edits[state.edits.length-1].expr);
+
+  var replace = (state, repl) => edit(state, ['expr', ...getFocus(state)], repl);
+
   var remove = (state) => {
-    if(state.focus.length == 1){
-      var exprs = state.exprs.slice();
-      exprs.splice(0|state.focus[0], 1);
-      return update(update(state, ['exprs'], exprs), ['focus'],
-        0|state.focus[0] >= state.exprs.length -1 ? [(state.exprs.length-2)+''] : state.focus);
+		// remove the editor if no subexpression is focused
+		if(lastStep(state) === undefined){
+      var edits = state.edits.slice();
+      edits.splice(state.focus, 1);
+      return goPrev(update(state, ['edits'], edits))
     }
 
-    var last = state.focus[state.focus.length-1];
-    var {expr} = lookup(state, state.focus.slice(0,-1));
+		// otherwise remove the current expression
+    var last = lastStep(state);
+    var {expr} = getFocusExpr(goUp1(state));
     var repl;
     switch(last){
       case 'argname':
@@ -233,69 +296,62 @@ var State = (() => {
       case 'body': repl = expr.type; break;
       case 'func': repl = expr.arg; break;
       case 'arg': repl = expr.func; break;
-      default: throw "Help! " + last;
+      default: return state;
     }
-    return update(update(state,
-      ['exprs', ...state.focus.slice(0,-1)], repl),
-      ['focus'], state.focus.slice(0, -1)
-    );
+    return replace(goUp1(state), repl);
   };
 
-  var replace = (state, repl) => update(state, ['exprs', ...state.focus], repl);
   var wrap = (state, kind, which) => {
-    var expr = lookup(state, state.focus).expr;
+    var {expr} = getFocusExpr(state);
+		var path = getFocus(state);
     var repl, focus; 
     switch(kind + '|' + which){
       case 'pi|type':
       case 'lam|type':
         repl = {kind: kind, type: expr, body: Candid.Hole};
-        focus = state.focus.length == 1 ? 'name' : 'argname';
+        focus = path.length == 1 ? 'name' : 'argname';
         break;
       case 'pi|body':
       case 'lam|body':
         repl = {kind: kind, type: Candid.Hole, body:Candid.shift(1, expr)};
-        focus = state.focus.length == 1 ? 'name' : 'argname';
+        focus = path.length == 1 ? 'name' : 'argname';
         break;
       case 'type|type':
         repl = {kind: kind, type: expr, body: Candid.Hole};
-        focus = state.focus.length == 1 ? 'name' : 'body';
+        focus = path.length == 1 ? 'name' : 'body';
         break;
       case 'type|body':
         repl = {kind: kind, type: Candid.Hole, body: expr};
-        focus = state.focus.length == 1 ? 'name' : 'type';
+        focus = path.length == 1 ? 'name' : 'type';
         break;
       case 'app|func':
         repl = {kind: kind, func: expr, arg: Candid.Hole};
-        focus = state.focus.length == 1 ? 'name' : 'arg';
+        focus = path.length == 1 ? 'name' : 'arg';
         break;
       case 'app|arg':
         repl = {kind: kind, func: Candid.Hole, arg: expr};
-        focus = state.focus.length == 1 ? 'name' : 'func';
+        focus = path.length == 1 ? 'name' : 'func';
         break;
       default:
         throw 'Unknown wrap kind ' + kind;
     }
-    return update(update(state,
-      ['exprs', ...state.focus], repl),
-      ['focus'], [...state.focus, focus]);
+    return addFocus(replace(state, repl), focus);
   }
 
   var toggleHash = (state) => {
-    var {expr} = lookup(state, state.focus);
+    var {expr} = getFocusExpr(state);
     if(expr.kind == 'hash')
       return replace(state, Candid.unwrap(expr));
     return replace(state, Candid.enhash(expr));
   };
 
-  var stringClear1 = (state) => update(state, ['exprs', ...state.focus],
-    lookup(state, state.focus).expr.slice(0,-1));
-  var stringClear = (state) => update(state, ['exprs', ...state.focus], '');
-  var stringAppend = (state, str) => update(state, ['exprs', ...state.focus],
-    lookup(state, state.focus).expr + str);
-
+  var stringClear1 = (state) => replace(state, getFocusExpr(state).slice(0, -1));
+  var stringClear = (state) => replace(state, '');
+  var stringAppend = (state) => replace(state, getFocusExpr(state) + str);
 
   return {
     update: update,
+		lastStep: lastStep,
     lookup: lookup,
     compose: compose,
     go: {
@@ -317,6 +373,7 @@ var State = (() => {
     expr: {
       extractType: extractType,
       extractExpr: extractExpr,
+      insertExpr: insertExpr,
       toggleHash: toggleHash,
       remove: remove,
       replace: replace,
