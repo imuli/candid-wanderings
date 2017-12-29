@@ -11,13 +11,18 @@
 	<script type="text/javascript" src="./inferno-create-element.js"></script>
 	<script type="text/javascript" src="./blake2s1.js"></script>
 	<script type="text/javascript" src="candid.js"></script>
-	<script type="text/javascript" src="ui.js"></script>
-	<script type="text/javascript" src="edit.js"></script>
+	<script type="text/javascript" src="state.js"></script>
+	<script type="text/javascript" src="view.js"></script>
+	<script type="text/javascript" src="editor.js"></script>
 <style>
 
 html {
 	filter: invert(100%);
 	background: black;
+}
+
+.candid-expr {
+	padding: 1ex 0;
 }
 
 .candid-matches {
@@ -52,26 +57,14 @@ html {
 	margin: 0 1ex;
 }
 
-:focus {
+.candid-focus {
+	background: rgba(0,0,0,0.08);
+}
+.candid-focus .candid-focus {
+	background: white;
 	outline: 1px solid #80ff80;
 }
 
-.candid-name:focus,.candid-argname:focus {
-	display: inline-block;
-	min-width: 0.5ex;
-	min-height: 1.5ex;
-}
-
-.candid-star {
-	display: inline-block;
-	text-align: center;
-}
-.candid-hole {
-	display: inline-block;
-	min-width: 1em;
-	min-height: 1em;
-	border-bottom: 1px dotted black;
-}
 .candid-typeerror > * {
 	display: inline-block;
 	margin: 0 2em 0 0;
