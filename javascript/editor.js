@@ -36,6 +36,11 @@ var keymap = {
 	expr: {
 		keydown: {
 			'ArrowUp': State.go.up,
+			'ArrowDown': State.go.down,
+			'ArrowLeft': State.go.left,
+			'ArrowRight': State.go.right,
+			'Home': State.go.home,
+			'End': State.go.end,
 			'PageUp': State.go.prev,
 			'PageDown': State.go.next,
 			'shift+Tab': State.go.left,
