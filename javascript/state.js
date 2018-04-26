@@ -279,6 +279,8 @@ var State = (() => {
 	var remove = (state) => {
 		// remove the editor if no subexpression is focused
 		if(lastStep(state) === undefined){
+			if(state.edits.length == 1)
+				return replace(state, Candid.Hole);
 			var edits = state.edits.slice();
 			edits.splice(state.focus, 1);
 			return goPrev(update(state, ['edits'], edits))
