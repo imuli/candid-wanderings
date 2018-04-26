@@ -80,6 +80,16 @@ var keymap = {
 			'shift+A': (state) => State.expr.wrap(state, 'app', 'arg'),
 			's': (state) => State.expr.replace(state, Candid.Star),
 			'shift+_': (state) => State.expr.replace(state, Candid.Hole),
+			'0': (state) => State.expr.replace(state, state.matches[0]),
+			'1': (state) => State.expr.replace(state, state.matches[1]),
+			'2': (state) => State.expr.replace(state, state.matches[2]),
+			'3': (state) => State.expr.replace(state, state.matches[3]),
+			'4': (state) => State.expr.replace(state, state.matches[4]),
+			'5': (state) => State.expr.replace(state, state.matches[5]),
+			'6': (state) => State.expr.replace(state, state.matches[6]),
+			'7': (state) => State.expr.replace(state, state.matches[7]),
+			'8': (state) => State.expr.replace(state, state.matches[8]),
+			'9': (state) => State.expr.replace(state, state.matches[9]),
 		},
 	}
 };

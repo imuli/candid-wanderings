@@ -694,6 +694,12 @@ var Candid = (() => {
 		return expr;
 	};
 
+	var search = r.search = (type, ctx) =>
+		derive(type, ctx)
+			.concat(Object.keys(_store)
+				.filter((k) => typeMatch(type, _store[k].type, ctx, []))
+				.map((k) => Hash(_store[k].hash)));
+
 	// render to compact UTF16 format
 	// suitable for use with localStorage
 	var toUTF16 = r.toUTF16 = (e) => {

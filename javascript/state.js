@@ -70,6 +70,8 @@ var State = (() => {
 	};
 
 	var update = (state, [step, ...rest], repl) => {
+		console.log(repl);
+		if(repl === undefined) return state;
 		switch(step){
 			case 'focus':
 				return Object.assign({}, state, {focus: repl});

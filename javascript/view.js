@@ -151,6 +151,14 @@ var View = (() => {
 			{className: 'candid-expr' + (state.focus == i ? ' candid-focus' : '')},
 			viewExpr(edit.expr, [], [i, ...edit.focus], [i])
 		));
+		var {type} = Candid.typeAt(path, state.edits[step].expr);
+		state.matches = Candid.search(type, ctx);
+		var matches = state.matches.map((option, i) => E('li',
+			{className: 'candid-expr'},
+			viewExpr(option, ctx),
+			':',
+			viewType(option, ctx),
+		));
 		return E('div', {}, 
 			E('div', { className: 'candid-typeat' },
 				"Need Type: ",
@@ -160,7 +168,10 @@ var View = (() => {
 				"Have Type: ",
 				viewType(expr, ctx)
 			),
-			...edits
+			...edits,
+			E('ul', { className: 'candid-matches' },
+				...matches
+			)
 		);
 	};
 	return {
