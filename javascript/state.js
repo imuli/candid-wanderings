@@ -308,12 +308,12 @@ var State = (() => {
 		switch(kind + '|' + which){
 			case 'pi|type':
 			case 'lam|type':
-				repl = {kind: kind, type: expr, body: Candid.Hole};
+				repl = {kind: kind, type: expr, body: Candid.Hole, argname: ''};
 				focus = path.length == 1 ? 'name' : 'argname';
 				break;
 			case 'pi|body':
 			case 'lam|body':
-				repl = {kind: kind, type: Candid.Hole, body:Candid.shift(1, expr)};
+				repl = {kind: kind, type: Candid.Hole, body:Candid.shift(1, expr), argname: ''};
 				focus = path.length == 1 ? 'name' : 'argname';
 				break;
 			case 'type|type':
@@ -335,6 +335,7 @@ var State = (() => {
 			default:
 				throw 'Unknown wrap kind ' + kind;
 		}
+		repl.name = '';
 		return addFocus(replace(state, repl), focus);
 	}
 
