@@ -1,6 +1,6 @@
 var state = {
-	exprs: [],
-	focus: ['0'],
+	edits: [],
+	focus: 0,
 };
 var timeout;
 var saveState = () => localStorage.setItem('candid-state', JSON.stringify(state));
@@ -13,8 +13,11 @@ var redraw = () => {
 Candid.load().then(() => {
 	state = loadState();
 	if(!state) state = {
-		exprs: [Candid.Lam(Candid.Star, Candid.Lam(Candid.Ref(0), Candid.Ref(0), 'x'), 't', 'id')],
-		focus: ['0'],
+		edits: [{
+			expr: Candid.Lam(Candid.Star, Candid.Lam(Candid.Ref(0), Candid.Ref(0), 'x'), 't', 'id'),
+			focus: [],
+		}],
+		focus: 0,
 	};
 	redraw();
 });

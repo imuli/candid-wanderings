@@ -338,6 +338,12 @@ var State = (() => {
     return addFocus(replace(state, repl), focus);
   }
 
+  var save = (state) => {
+    var {expr} = getFocusExpr(state);
+    Candid.store(expr);
+    return toggleHash(state);
+  }
+
   var toggleHash = (state) => {
     var {expr} = getFocusExpr(state);
     if(expr.kind == 'hash')
@@ -345,9 +351,9 @@ var State = (() => {
     return replace(state, Candid.enhash(expr));
   };
 
-  var stringClear1 = (state) => replace(state, getFocusExpr(state).slice(0, -1));
+  var stringClear1 = (state) => replace(state, getFocusExpr(state).expr.slice(0, -1));
   var stringClear = (state) => replace(state, '');
-  var stringAppend = (state) => replace(state, getFocusExpr(state) + str);
+  var stringAppend = (state, str) => replace(state, getFocusExpr(state).expr + str);
 
   return {
     update: update,
@@ -378,6 +384,7 @@ var State = (() => {
       remove: remove,
       replace: replace,
       wrap: wrap,
+      save: save,
     },
     str: {
       clear1: stringClear1,
