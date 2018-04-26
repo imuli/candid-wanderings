@@ -262,7 +262,7 @@ var Candid = (() => {
 		if(type.kind == 'pi'){
 			var more = derive(type.body, [type, ...ctx]);
 			for(var i = 0; i < more.length; i ++){
-				solutions.push(Lam(type.type, more[i]));
+				solutions.push(Lam(type.type, more[i], type.argname, ''));
 			}
 		}
 		return solutions;
