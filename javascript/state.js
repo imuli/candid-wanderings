@@ -346,6 +346,7 @@ var State = (() => {
 	var save = (state) => {
 		var {expr} = getFocusExpr(state);
 		Candid.store(expr);
+		Candid.save();
 		return toggleHash(state);
 	}
 

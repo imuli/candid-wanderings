@@ -259,6 +259,7 @@ var Candid = (() => {
 			propose(Ref(i));
 			propose(Rec(i));
 		}
+		type = unhash(type);
 		if(type.kind == 'pi'){
 			var more = derive(type.body, [type, ...ctx]);
 			for(var i = 0; i < more.length; i ++){

@@ -152,10 +152,14 @@ var View = (() => {
 			viewExpr(edit.expr, [], [i, ...edit.focus], [i])
 		));
 		var {type} = Candid.typeAt(path, state.edits[step].expr);
+		// derived state
+		state.expr = expr;
+		state.context = ctx;
+		state.type = type = Candid.enhash(type);
 		state.matches = Candid.search(type, ctx);
 		var matches = state.matches.map((option, i) => E('li',
 			{className: 'candid-expr'},
-			viewExpr(option, ctx),
+			viewExpr(Candid.enhash(option), ctx),
 			':',
 			viewType(option, ctx),
 		));
