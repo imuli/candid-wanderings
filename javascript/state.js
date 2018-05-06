@@ -345,9 +345,17 @@ var State = (() => {
 
 	var save = (state) => {
 		var {expr} = getFocusExpr(state);
-		Candid.store(expr);
+		Candid.store(expr, true);
 		Candid.save();
 		return toggleHash(state);
+	}
+
+	var deleteExpression = (state) => {
+		var {expr} = getFocusExpr(state);
+		state = replace(state, Candid.unwrap(expr));
+		Candid.remove(expr);
+		Candid.save();
+		return state;
 	}
 
 	var toggleHash = (state) => {
@@ -391,6 +399,7 @@ var State = (() => {
 			replace: replace,
 			wrap: wrap,
 			save: save,
+			delete: deleteExpression,
 		},
 		str: {
 			clear1: stringClear1,

@@ -53,6 +53,7 @@ var keymap = {
 			'ctrl+a': State.go.all,
 			'ctrl+k': State.go.up1,
 			'Backspace': State.expr.remove,
+			'shift+Backspace': State.expr.delete,
 			'Enter': State.expr.save,
 		},
 		keypress: {
@@ -112,9 +113,18 @@ var onkey = (event) => {
 var onclick = (event) => {
 	if(!event.target.id) return;
 	var [first, ...path] = event.target.id.split('!');
-	first |= 0;
-	if(state.edits[first] === undefined) return;
-	state = State.update(State.update(state, ['focus'], first), ['edits', first, 'focus'], path);
+	switch(first){
+		case 'match':
+			var match = state.matches[path|0];
+			if(match === undefined) return;
+			state = State.expr.replace(state, match);
+			break;
+		default:
+			first |= 0;
+			if(state.edits[first] === undefined) return;
+			state = State.update(State.update(state, ['focus'], first), ['edits', first, 'focus'], path);
+			break;
+	}
 	redraw();
 	event.preventDefault();
 	console.log(event);
