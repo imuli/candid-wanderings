@@ -549,8 +549,9 @@ var Candid = (() => {
 
 	// hash the parts of an expression that are in the store
 	var enhash = r.enhash = (e) => {
-		if(fetch(hash(e)))
-			return Hash(hash(e), e.name);
+		var entry = fetch(hash(e));
+		if(entry)
+			return Hash(entry.hash, e.name || entry.name);
 		switch(e.kind){
 			case 'star':
 			case 'ref':
