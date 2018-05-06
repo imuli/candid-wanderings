@@ -292,7 +292,7 @@ var Candid = (() => {
 				if(e0.func.kind == 'lam')
 					return ceq(replace(e0.arg, e0.func, e0.func.body), e1, p0, p1, test);
 				break;
-			case 'rec': return p0.length <= e0.value ? false : ceq(p0[e0.value], e1, p0.slice(e0.value), p1, test);
+			case 'rec': return p0.length <= e0.value ? false : ceq(p0[e0.value], e1, p0, p1, test);
 		};
 		switch(e1.kind){
 			case 'hash': return ceq(e0, unwrap(e1), p0, p1, test);
@@ -301,7 +301,7 @@ var Candid = (() => {
 				if(e1.func.kind == 'lam')
 					return ceq(e0, replace(e1.arg, e1.func, e1.func.body), p0, p1, test);
 				break;
-			case 'rec': return p1.length <= e1.value ? false : ceq(e0, p1[e1.value], p0, p1.slice(e1.value), test);
+			case 'rec': return p1.length <= e1.value ? false : ceq(e0, p1[e1.value], p0, p1, test);
 		};
 		return false;
 	}
