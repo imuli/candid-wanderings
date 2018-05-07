@@ -119,10 +119,10 @@ var View = (() => {
 		{ class: 'candid-error' },
 		E('dt', {}, "Error:"),
 		E('dd', {}, error.kind),
-		E('dt', {}, "Expected Type:"),
-		E('dd', {}, viewExpr(Candid.enhash(error.et), error.ctx)),
-		E('dt', {}, "Actual Type:"),
-		E('dd', {}, viewExpr(Candid.enhash(error.at), error.ctx)),
+		!error.et ? '' : E('dt', {}, "Expected Type:"),
+		!error.et ? '' : E('dd', {}, viewExpr(Candid.enhash(error.et), error.ctx)),
+		!error.at ? '' : E('dt', {}, "Actual Type:"),
+		!error.at ? '' : E('dd', {}, viewExpr(Candid.enhash(error.at), error.ctx)),
 	);
 
 	var viewTypeAt = (path, expr) => {
