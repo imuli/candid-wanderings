@@ -177,7 +177,7 @@ var Candid = (() => {
 			case 'app':
 				var ft = reduce(unhash(typecheck(e.func, ctx, trust)), true);
 				if(ft.kind != 'pi'){
-					throw { kind: 'Not a Function', ctx: ctx, exp: e, ft: ft };
+					throw { kind: 'Not a Function', ctx: ctx, et: Pi(Hole, Hole), exp: e, at: ft };
 				}
 				var at = typecheck(e.arg, ctx, trust);
 				if(!ceq(reduce(unhash(at), true), ft.type, [], [])){
@@ -188,10 +188,10 @@ var Candid = (() => {
 				if(trust) return Star;
 				var itt = typecheck(e.type, ctx);
 				if(itt.kind != 'star')
-					throw { kind: 'Invalid Input Type', ctx: ctx, exp: e, at: itt };
+					throw { kind: 'Invalid Input Type', ctx: ctx, et: Star, exp: e, at: itt };
 				var ott = typecheck(e.body, [e, ...ctx]);
 				if(ott.kind != 'star'){
-					throw { kind: 'Invalid Output Type', ctx: ctx, exp: e, at: ott };
+					throw { kind: 'Invalid Output Type', ctx: ctx, et: Star, exp: e, at: ott };
 				}
 				return ott;
 			case 'lam':
