@@ -173,8 +173,6 @@ var View = (() => {
 				className: 'candid-expr'
 			},
 			viewExpr(Candid.enhash(option), ctx),
-			':',
-			viewType(option, ctx),
 		));
 		return E('div', {}, 
 			E('div', { className: 'candid-typeat' },
