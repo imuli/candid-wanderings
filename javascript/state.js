@@ -305,42 +305,42 @@ var State = (() => {
 		return replace(goUp1(state), repl);
 	};
 
-	var wrap = (state, kind, which) => {
-		var {expr} = getFocusExpr(state);
+	var wrap = (state, kind, which, loop) => {
 		var path = getFocus(state);
-		var repl, focus; 
+		while(loop && path[path.length-1] === which){
+			state = goUp1(state);
+			path = getFocus(state);
+		}
+		var {expr} = getFocusExpr(state);
+		var repl; 
 		switch(kind + '|' + which){
 			case 'pi|type':
 			case 'lam|type':
-				repl = {kind: kind, type: expr, body: Candid.Hole, argname: ''};
-				focus = path.length == 1 ? 'name' : 'argname';
+				repl = {body: expr, argname: ''};
 				break;
 			case 'pi|body':
 			case 'lam|body':
-				repl = {kind: kind, type: Candid.Hole, body:Candid.shift(1, expr), argname: ''};
-				focus = path.length == 1 ? 'name' : 'argname';
+				repl = {type: Candid.shift(1, expr), argname: ''};
 				break;
 			case 'type|type':
-				repl = {kind: kind, type: expr, body: Candid.Hole};
-				focus = path.length == 1 ? 'name' : 'body';
+				repl = {body: expr};
 				break;
 			case 'type|body':
-				repl = {kind: kind, type: Candid.Hole, body: expr};
-				focus = path.length == 1 ? 'name' : 'type';
+				repl = {type: expr};
 				break;
 			case 'app|func':
-				repl = {kind: kind, func: expr, arg: Candid.Hole};
-				focus = path.length == 1 ? 'name' : 'arg';
+				repl = {arg: expr};
 				break;
 			case 'app|arg':
-				repl = {kind: kind, func: Candid.Hole, arg: expr};
-				focus = path.length == 1 ? 'name' : 'func';
+				repl = {func: expr};
 				break;
 			default:
 				throw 'Unknown wrap kind ' + kind;
 		}
+		repl.kind = kind;
+		repl[which] = Candid.Hole;
 		repl.name = '';
-		return addFocus(replace(state, repl), focus);
+		return addFocus(replace(state, repl), which);
 	}
 
 	var save = (state) => {
