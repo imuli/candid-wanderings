@@ -115,13 +115,23 @@ var View = (() => {
 		};
 	};
 
+	var viewTypeError = (error) => E('dl',
+		{ class: 'candid-error' },
+		E('dt', {}, "Error:"),
+		E('dd', {}, error.kind),
+		!error.et ? '' : E('dt', {}, "Expected Type:"),
+		!error.et ? '' : E('dd', {}, viewExpr(Candid.enhash(error.et), error.ctx)),
+		!error.at ? '' : E('dt', {}, "Actual Type:"),
+		!error.at ? '' : E('dd', {}, viewExpr(Candid.enhash(error.at), error.ctx)),
+	);
+
 	var viewTypeAt = (path, expr) => {
 		try {
 			var {type, ctx} = Candid.typeAt(path, expr);
 			return viewExpr(Candid.enhash(type), ctx, undefined, ["typeat"]);
 		} catch(e) {
 			console.warn(e, path, expr);
-			return e.toString();
+			return viewTypeError(e);
 		}
 	};
 
@@ -132,7 +142,7 @@ var View = (() => {
 		} catch(e) {
 			console.log(expr, ctx);
 			console.warn(e);
-			return e.toString();
+			return viewTypeError(e);
 		}
 	};
 
@@ -151,6 +161,33 @@ var View = (() => {
 			{className: 'candid-expr' + (state.focus == i ? ' candid-focus' : '')},
 			viewExpr(edit.expr, [], [i, ...edit.focus], [i])
 		));
+		var {type} = Candid.typeAt(path, state.edits[step].expr);
+		// derived state
+		state.expr = expr;
+		state.context = ctx;
+		state.type = type = Candid.enhash(Candid.reduce(Candid.unhash(type)));
+		if(state.mode == 'match') {
+			state.matches = Candid.search(type, ctx);
+			var matches = [];
+		}
+		if(state.mode == 'lookup') {
+			state.matches = Candid.searchName(state.scratch, ctx);
+			var matches = [state.scratch];
+		}
+		if(matches){
+			state.matches = state.matches.map(Candid.enhash);
+			matches = matches.concat(
+				state.matches.map((option, i) => E('li',
+					{
+						id: 'match!' + i,
+						className: 'candid-expr'
+					},
+					viewExpr(option, ctx),
+					state.mode != 'lookup' ? '' : ' : ',
+					state.mode != 'lookup' ? '' : viewType(option, ctx)
+				))
+			);
+		}
 		return E('div', {}, 
 			E('div', { className: 'candid-typeat' },
 				"Need Type: ",
@@ -160,7 +197,10 @@ var View = (() => {
 				"Have Type: ",
 				viewType(expr, ctx)
 			),
-			...edits
+			...edits,
+			!matches ? '' : E('ul', { className: 'candid-matches' },
+				...matches
+			)
 		);
 	};
 	return {

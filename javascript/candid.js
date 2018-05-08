@@ -123,6 +123,11 @@ var Candid = (() => {
 		return red;
 	};
 
+	// expand recursion once in expression
+	var expand = (exp) => over(
+			((e,c) => e),
+			((e,c) => e.value == c-1 ? shift(c,exp) : e), 0, exp);
+
 	// replace references and recurs in an expression
 	var replace = (ref, rec, exp) => {
 		return shift(-1, over(
@@ -151,14 +156,14 @@ var Candid = (() => {
 	};
 
 	// type check expression within context
-	var typecheck = r.typecheck = (e, ctx, trust) => {
+	var typecheck = r.typecheck = (e, ctx, trust, holeOk) => {
 		if(ctx === undefined) ctx = [];
 		switch(e.kind) {
 			case 'star': return Star;
 			case 'hole': return e;
 			case 'type':
 				if(trust) return e.type;
-				var type = typecheck(e.body, ctx);
+				var type = typecheck(e.body, ctx, false, holeOk);
 				if(!ceq(reduce(unhash(type), true), reduce(unhash(e.type), true), [], []))
 					throw { kind: 'Failed Type Assertion', ctx: ctx, et: e.type, at: type };
 				return e.type;
@@ -173,30 +178,30 @@ var Candid = (() => {
 					throw { kind: 'Open Expression', ctx: ctx, exp: e };
 				if(trust)
 					throw { kind: 'Type Inference', ctx: ctx, exp: e };
-				return typecheck(ctx[e.value], ctx.slice(e.value+1), true);
+				return typecheck(ctx[e.value], ctx.slice(e.value+1), true, holeOk);
 			case 'app':
-				var ft = reduce(unhash(typecheck(e.func, ctx, trust)), true);
+				var ft = reduce(unhash(typecheck(e.func, ctx, trust, holeOk)), true);
 				if(ft.kind != 'pi'){
-					throw { kind: 'Not a Function', ctx: ctx, exp: e, ft: ft };
+					throw { kind: 'Not a Function', ctx: ctx, et: Pi(Hole, Hole), exp: e, at: ft };
 				}
-				var at = typecheck(e.arg, ctx, trust);
-				if(!ceq(reduce(unhash(at), true), ft.type, [], [])){
+				var at = typecheck(e.arg, ctx, trust, holeOk);
+				if(!(holeOk && at.kind == 'hole') && !ceq(reduce(unhash(at), true), ft.type, [], [])){
 					throw { kind: 'Type Mismatch', ctx: ctx, exp: e, et: ft.type, at: at };
 				}
 				return reduce(replace(e.arg, ft, ft.body));
 			case 'pi':
 				if(trust) return Star;
-				var itt = typecheck(e.type, ctx);
-				if(itt.kind != 'star')
-					throw { kind: 'Invalid Input Type', ctx: ctx, exp: e, at: itt };
-				var ott = typecheck(e.body, [e, ...ctx]);
-				if(ott.kind != 'star'){
-					throw { kind: 'Invalid Output Type', ctx: ctx, exp: e, at: ott };
+				var itt = typecheck(e.type, ctx, false, holeOk);
+				if(itt.kind != 'star' && !(holeOk && itt.kind == 'hole'))
+					throw { kind: 'Invalid Input Type', ctx: ctx, et: Star, exp: e, at: itt };
+				var ott = typecheck(e.body, [e, ...ctx], false, holeOk);
+				if(ott.kind != 'star' && !(holeOk && ott.kind == 'hole')){
+					throw { kind: 'Invalid Output Type', ctx: ctx, et: Star, exp: e, at: ott };
 				}
 				return ott;
 			case 'lam':
-				typecheck(e.type, ctx, trust);
-				var output_type = typecheck(e.body, [e, ...ctx], trust);
+				typecheck(e.type, ctx, trust, holeOk);
+				var output_type = typecheck(e.body, [e, ...ctx], trust, holeOk);
 				return Pi(e.type, output_type, e.argname, undefined); // can't derive a name for the overall pi
 		};
 		throw "Type Error";
@@ -229,10 +234,20 @@ var Candid = (() => {
 			case 'type|body':
 				return typeAt(rest, expr.body, ctx, expr.type);
 			case 'app|func':
-				var argType = typecheck(expr.arg, ctx);
+				var argType;
+				try {
+					argType = typecheck(expr.arg, ctx);
+				} catch(e) {
+					argType = Hole;
+				}
 				return typeAt(rest, expr.func, ctx, Pi(argType, shift(1, wish)));
 			case 'app|arg':
-				var funcType = unwrap(typecheck(expr.func, ctx));
+				var funcType;
+				try {
+					funcType = unwrap(typecheck(expr.func, ctx, false, true));
+				} catch(e) {
+					funcType = Hole;
+				}
 				if(funcType.kind != 'pi') return {type: Hole, ctx: ctx};
 				return typeAt(rest, expr.arg, ctx, funcType.type);
 		};
@@ -251,18 +266,53 @@ var Candid = (() => {
 					solutions.push(solution);
 				}
 			} catch(e) {
-				console.warn(e);
+				//console.warn(e);
 			}
 		};
 
 		for(var i = 0; i < ctx.length; i++){
 			propose(Ref(i));
 			propose(Rec(i));
+			// this isn't really a good way to do this
+			for(var j = 0; j < i; j++){
+				propose(App(Ref(i), Ref(j)));
+				propose(App(Ref(j), Ref(i)));
+				propose(App(Rec(i), Ref(j)));
+				propose(App(Rec(j), Ref(i)));
+				// this _really_ isn't a good way to do this
+				for(var k = 0; k < j; k++){
+					propose(App(App(Ref(i), Ref(j)), Ref(k)));
+					propose(App(App(Ref(i), Ref(k)), Ref(j)));
+					propose(App(App(Ref(j), Ref(i)), Ref(k)));
+					propose(App(App(Ref(j), Ref(k)), Ref(i)));
+					propose(App(App(Ref(k), Ref(i)), Ref(j)));
+					propose(App(App(Ref(k), Ref(j)), Ref(i)));
+					propose(App(Ref(i), App(Ref(j), Ref(k))));
+					propose(App(Ref(i), App(Ref(k), Ref(j))));
+					propose(App(Ref(j), App(Ref(i), Ref(k))));
+					propose(App(Ref(j), App(Ref(k), Ref(i))));
+					propose(App(Ref(k), App(Ref(i), Ref(j))));
+					propose(App(Ref(k), App(Ref(j), Ref(i))));
+					propose(App(App(Rec(i), Ref(j)), Ref(k)));
+					propose(App(App(Rec(i), Ref(k)), Ref(j)));
+					propose(App(App(Rec(j), Ref(i)), Ref(k)));
+					propose(App(App(Rec(j), Ref(k)), Ref(i)));
+					propose(App(App(Rec(k), Ref(i)), Ref(j)));
+					propose(App(App(Rec(k), Ref(j)), Ref(i)));
+					propose(App(Rec(i), App(Ref(j), Ref(k))));
+					propose(App(Rec(i), App(Ref(k), Ref(j))));
+					propose(App(Rec(j), App(Ref(i), Ref(k))));
+					propose(App(Rec(j), App(Ref(k), Ref(i))));
+					propose(App(Rec(k), App(Ref(i), Ref(j))));
+					propose(App(Rec(k), App(Ref(j), Ref(i))));
+				}
+			}
 		}
+		type = unhash(type);
 		if(type.kind == 'pi'){
-			var more = derive(type.body, [type, ...ctx]);
+			var more = derive(expand(type).body, [type, ...ctx]);
 			for(var i = 0; i < more.length; i ++){
-				solutions.push(Lam(type.type, more[i]));
+				solutions.push(Lam(type.type, more[i], type.argname, ''));
 			}
 		}
 		return solutions;
@@ -291,7 +341,7 @@ var Candid = (() => {
 				if(e0.func.kind == 'lam')
 					return ceq(replace(e0.arg, e0.func, e0.func.body), e1, p0, p1, test);
 				break;
-			case 'rec': return p0.length <= e0.value ? false : ceq(p0[e0.value], e1, p0.slice(e0.value), p1, test);
+			case 'rec': return p0.length <= e0.value ? false : ceq(p0[e0.value], e1, p0, p1, test);
 		};
 		switch(e1.kind){
 			case 'hash': return ceq(e0, unwrap(e1), p0, p1, test);
@@ -300,7 +350,7 @@ var Candid = (() => {
 				if(e1.func.kind == 'lam')
 					return ceq(e0, replace(e1.arg, e1.func, e1.func.body), p0, p1, test);
 				break;
-			case 'rec': return p1.length <= e1.value ? false : ceq(e0, p1[e1.value], p0, p1.slice(e1.value), test);
+			case 'rec': return p1.length <= e1.value ? false : ceq(e0, p1[e1.value], p0, p1, test);
 		};
 		return false;
 	}
@@ -548,8 +598,9 @@ var Candid = (() => {
 
 	// hash the parts of an expression that are in the store
 	var enhash = r.enhash = (e) => {
-		if(fetch(hash(e)))
-			return Hash(hash(e), e.name);
+		var entry = fetch(hash(e));
+		if(entry)
+			return Hash(entry.hash, e.name || entry.name);
 		switch(e.kind){
 			case 'star':
 			case 'ref':
@@ -693,6 +744,22 @@ var Candid = (() => {
 		}
 		return expr;
 	};
+
+	// search by type
+	var search = r.search = (type, ctx) =>
+		derive(type, ctx)
+			.concat(Object.keys(_store)
+				.filter((k) => typeMatch(type, _store[k].type, ctx, []))
+				.map((k) => Hash(_store[k].hash)));
+
+	// search by name
+	var searchName = r.searchName = (name, ctx) =>
+		[].concat(ctx.map((e, i) => ({name: e.name, expr: Rec(i)})))
+			.concat(ctx.map((e, i) => ({name: e.argname, expr: Ref(i)})))
+			.concat(Object.keys(_store).map((k) => _store[k]))
+			.filter((ent) => ent.name && ent.name.startsWith(name))
+		  .sort((a,b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+			.map((ent) => ent.hash ? Hash(ent.hash, ent.name) : ent.expr);
 
 	// render to compact UTF16 format
 	// suitable for use with localStorage
