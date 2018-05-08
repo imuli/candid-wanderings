@@ -125,8 +125,8 @@ var Candid = (() => {
 
 	// expand recursion once in expression
 	var expand = (exp) => over(
-			((e,c) => e),
-			((e,c) => e.value == c-1 ? shift(c,exp) : e), 0, exp);
+		((e,c) => e),
+		((e,c) => e.value == c-1 ? shift(c,exp) : e), 0, exp);
 
 	// replace references and recurs in an expression
 	var replace = (ref, rec, exp) => {
@@ -758,7 +758,7 @@ var Candid = (() => {
 			.concat(ctx.map((e, i) => ({name: e.argname, expr: Ref(i)})))
 			.concat(Object.keys(_store).map((k) => _store[k]))
 			.filter((ent) => ent.name && ent.name.startsWith(name))
-		  .sort((a,b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+			.sort((a,b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
 			.map((ent) => ent.hash ? Hash(ent.hash, ent.name) : ent.expr);
 
 	// render to compact UTF16 format
