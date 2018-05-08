@@ -234,7 +234,12 @@ var Candid = (() => {
 			case 'type|body':
 				return typeAt(rest, expr.body, ctx, expr.type);
 			case 'app|func':
-				var argType = typecheck(expr.arg, ctx);
+				var argType;
+				try {
+					argType = typecheck(expr.arg, ctx);
+				} catch(e) {
+					argType = Hole;
+				}
 				return typeAt(rest, expr.func, ctx, Pi(argType, shift(1, wish)));
 			case 'app|arg':
 				var funcType;
