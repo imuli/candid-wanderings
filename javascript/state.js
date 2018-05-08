@@ -73,6 +73,10 @@ var State = (() => {
 		console.log(repl);
 		if(repl === undefined) return state;
 		switch(step){
+			case 'mode':
+				return Object.assign({}, state, {mode: repl});
+			case 'scratch':
+				return Object.assign({}, state, {scratch: repl});
 			case 'focus':
 				return Object.assign({}, state, {focus: repl});
 			case 'edits':
@@ -105,7 +109,12 @@ var State = (() => {
 
 	var lookup = (state, path) => getEdit(state, ['expr', ...path]);
 
-	var compose = (first, then) => (state) => then(first(state));
+	var compose = (...ops) => (state) => {
+		for(var i = 0; i < ops.length; i++){
+			state = ops[i](state);
+		}
+		return state;
+	};
 
 	var goAllTheWay = (func, state) => {
 		while(true){
@@ -135,7 +144,7 @@ var State = (() => {
 			case expr && expr.kind == 'type':
 			case expr && expr.kind == 'app':
 			case expr && expr.kind == 'hash':
-				return addFocus(state, 'name');
+				return addFocus(startMode('string')(state), 'name');
 			default:
 				return state;
 		}
@@ -146,7 +155,7 @@ var State = (() => {
 		switch(true){
 			case expr && expr.kind == 'pi':
 			case expr && expr.kind == 'lam':
-				return addFocus(state, 'argname');
+				return addFocus(startMode('string')(state), 'argname');
 			default:
 				return state;
 		}
@@ -368,8 +377,15 @@ var State = (() => {
 	var stringClear1 = (state) => replace(state, getFocusExpr(state).expr.slice(0, -1));
 	var stringClear = (state) => replace(state, '');
 	var stringAppend = (state, str) => replace(state, getFocusExpr(state).expr + str);
+	var scratchClear1 = (state) => update(state, ['scratch'], state.scratch.slice(0, -1));
+	var scratchClear = (state) => update(state, ['scratch'], '');
+	var scratchAppend = (state, str) => update(state, ['scratch'], state.scratch + str);
+
+	var startMode = (mode) => (state) =>
+		update(state, ['mode'], mode);
 
 	return {
+		startMode: startMode,
 		update: update,
 		lastStep: lastStep,
 		lookup: lookup,
@@ -405,6 +421,15 @@ var State = (() => {
 			clear1: stringClear1,
 			clear: stringClear,
 			append: stringAppend,
+		},
+		scratch: {
+			clear1: scratchClear1,
+			clear: scratchClear,
+			append: scratchAppend,
+		},
+		find: {
+			match: startMode('match'),
+			lookup: startMode('lookup'),
 		},
 	};
 })();

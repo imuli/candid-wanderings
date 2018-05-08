@@ -123,6 +123,11 @@ var Candid = (() => {
 		return red;
 	};
 
+	// expand recursion once in expression
+	var expand = (exp) => over(
+			((e,c) => e),
+			((e,c) => e.value == c-1 ? shift(c,exp) : e), 0, exp);
+
 	// replace references and recurs in an expression
 	var replace = (ref, rec, exp) => {
 		return shift(-1, over(
@@ -256,17 +261,51 @@ var Candid = (() => {
 					solutions.push(solution);
 				}
 			} catch(e) {
-				console.warn(e);
+				//console.warn(e);
 			}
 		};
 
 		for(var i = 0; i < ctx.length; i++){
 			propose(Ref(i));
 			propose(Rec(i));
+			// this isn't really a good way to do this
+			for(var j = 0; j < i; j++){
+				propose(App(Ref(i), Ref(j)));
+				propose(App(Ref(j), Ref(i)));
+				propose(App(Rec(i), Ref(j)));
+				propose(App(Rec(j), Ref(i)));
+				// this _really_ isn't a good way to do this
+				for(var k = 0; k < j; k++){
+					propose(App(App(Ref(i), Ref(j)), Ref(k)));
+					propose(App(App(Ref(i), Ref(k)), Ref(j)));
+					propose(App(App(Ref(j), Ref(i)), Ref(k)));
+					propose(App(App(Ref(j), Ref(k)), Ref(i)));
+					propose(App(App(Ref(k), Ref(i)), Ref(j)));
+					propose(App(App(Ref(k), Ref(j)), Ref(i)));
+					propose(App(Ref(i), App(Ref(j), Ref(k))));
+					propose(App(Ref(i), App(Ref(k), Ref(j))));
+					propose(App(Ref(j), App(Ref(i), Ref(k))));
+					propose(App(Ref(j), App(Ref(k), Ref(i))));
+					propose(App(Ref(k), App(Ref(i), Ref(j))));
+					propose(App(Ref(k), App(Ref(j), Ref(i))));
+					propose(App(App(Rec(i), Ref(j)), Ref(k)));
+					propose(App(App(Rec(i), Ref(k)), Ref(j)));
+					propose(App(App(Rec(j), Ref(i)), Ref(k)));
+					propose(App(App(Rec(j), Ref(k)), Ref(i)));
+					propose(App(App(Rec(k), Ref(i)), Ref(j)));
+					propose(App(App(Rec(k), Ref(j)), Ref(i)));
+					propose(App(Rec(i), App(Ref(j), Ref(k))));
+					propose(App(Rec(i), App(Ref(k), Ref(j))));
+					propose(App(Rec(j), App(Ref(i), Ref(k))));
+					propose(App(Rec(j), App(Ref(k), Ref(i))));
+					propose(App(Rec(k), App(Ref(i), Ref(j))));
+					propose(App(Rec(k), App(Ref(j), Ref(i))));
+				}
+			}
 		}
 		type = unhash(type);
 		if(type.kind == 'pi'){
-			var more = derive(type.body, [type, ...ctx]);
+			var more = derive(expand(type).body, [type, ...ctx]);
 			for(var i = 0; i < more.length; i ++){
 				solutions.push(Lam(type.type, more[i], type.argname, ''));
 			}
@@ -701,11 +740,21 @@ var Candid = (() => {
 		return expr;
 	};
 
+	// search by type
 	var search = r.search = (type, ctx) =>
 		derive(type, ctx)
 			.concat(Object.keys(_store)
 				.filter((k) => typeMatch(type, _store[k].type, ctx, []))
 				.map((k) => Hash(_store[k].hash)));
+
+	// search by name
+	var searchName = r.searchName = (name, ctx) =>
+		[].concat(ctx.map((e, i) => ({name: e.name, expr: Rec(i)})))
+			.concat(ctx.map((e, i) => ({name: e.argname, expr: Ref(i)})))
+			.concat(Object.keys(_store).map((k) => _store[k]))
+			.filter((ent) => ent.name && ent.name.startsWith(name))
+		  .sort((a,b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+			.map((ent) => ent.hash ? Hash(ent.hash, ent.name) : ent.expr);
 
 	// render to compact UTF16 format
 	// suitable for use with localStorage

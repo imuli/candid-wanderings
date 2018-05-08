@@ -166,14 +166,25 @@ var View = (() => {
 		state.expr = expr;
 		state.context = ctx;
 		state.type = type = Candid.enhash(Candid.reduce(Candid.unhash(type)));
-		state.matches = Candid.search(type, ctx);
-		var matches = state.matches.map((option, i) => E('li',
-			{
-				id: 'match!' + i,
-				className: 'candid-expr'
-			},
-			viewExpr(Candid.enhash(option), ctx),
-		));
+		if(state.mode == 'match') {
+			state.matches = Candid.search(type, ctx);
+			var matches = [];
+		}
+		if(state.mode == 'lookup') {
+			state.matches = Candid.searchName(state.scratch, ctx);
+			var matches = [state.scratch];
+		}
+		if(matches){
+			matches = matches.concat(
+				state.matches.map((option, i) => E('li',
+					{
+						id: 'match!' + i,
+						className: 'candid-expr'
+					},
+					viewExpr(Candid.enhash(option), ctx),
+				))
+			);
+		}
 		return E('div', {}, 
 			E('div', { className: 'candid-typeat' },
 				"Need Type: ",
@@ -184,7 +195,7 @@ var View = (() => {
 				viewType(expr, ctx)
 			),
 			...edits,
-			E('ul', { className: 'candid-matches' },
+			!matches ? '' : E('ul', { className: 'candid-matches' },
 				...matches
 			)
 		);

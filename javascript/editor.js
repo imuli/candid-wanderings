@@ -1,6 +1,8 @@
 var state = {
 	edits: [],
 	focus: 0,
+	mode: 'expr',
+	scratch: '',
 };
 var timeout;
 var saveState = () => localStorage.setItem('candid-state', JSON.stringify(state));
@@ -25,10 +27,9 @@ Candid.load().then(() => {
 var keymap = {
 	string: {
 		keydown: {
-			'ArrowUp': State.go.up,
-			'shift+Tab': State.go.left,
-			'Tab': State.go.right,
-			'Enter': State.go.right,
+			'ArrowUp': State.compose(State.go.up, State.startMode('expr')),
+			'Tab': State.compose(State.go.right, State.startMode('expr')),
+			'Enter': State.compose(State.go.right, State.startMode('expr')),
 			'Backspace': State.str.clear1,
 			'ctrl+Backspace': State.str.clear,
 		},
@@ -82,27 +83,52 @@ var keymap = {
 			's': (state) => State.expr.replace(state, Candid.Star),
 			' ': (state) => State.expr.wrap(state, 'app', 'arg', true),
 			'shift+_': (state) => State.expr.replace(state, Candid.Hole),
-			'0': (state) => State.expr.replace(state, state.matches[0]),
-			'1': (state) => State.expr.replace(state, state.matches[1]),
-			'2': (state) => State.expr.replace(state, state.matches[2]),
-			'3': (state) => State.expr.replace(state, state.matches[3]),
-			'4': (state) => State.expr.replace(state, state.matches[4]),
-			'5': (state) => State.expr.replace(state, state.matches[5]),
-			'6': (state) => State.expr.replace(state, state.matches[6]),
-			'7': (state) => State.expr.replace(state, state.matches[7]),
-			'8': (state) => State.expr.replace(state, state.matches[8]),
-			'9': (state) => State.expr.replace(state, state.matches[9]),
+			'm': State.find.match,
+			'r': State.find.lookup,
 		},
-	}
+	},
+	match: {
+		keydown: {
+			'Enter':  (state) => State.expr.replace(State.startMode('expr')(state), state.matches[0]),
+			'Escape':  State.startMode('expr'),
+			'Tab':  State.startMode('expr'),
+			'ArrowUp':  State.startMode('expr'),
+		},
+		// keys 0..9 and a..z replace with match 0..9 and 10..35
+		keypress: (() => {
+			var keys = {};
+			var fn = (state, key) => State.expr.replace(State.startMode('expr')(state), state.matches[parseInt(key, 36)]);
+			for(var i = 0; i < 36; i++){
+				keys[i.toString(36)] = fn;
+			}
+			return keys;
+		})(),
+	},
+	lookup: {
+		// keys ctrl+0..9 and ctrl+a..z replace with match 0..9 and 10..35
+		keydown: (() => {
+			var keys = {
+				'Enter':  (state) => State.expr.replace(State.startMode('expr')(state), state.matches[0]),
+				'Escape':  State.startMode('expr'),
+				'Tab':  State.startMode('expr'),
+				'ArrowUp':  State.startMode('expr'),
+				'Backspace': State.scratch.clear1,
+				'ctrl+Backspace': State.scratch.clear,
+			};
+			var fn = (state, key) => State.expr.replace(State.startMode('expr')(state), state.matches[parseInt(key, 36)]);
+			for(var i = 0; i < 36; i++){
+				keys['ctrl+'+i.toString(36)] = fn;
+			}
+			return keys;
+		})(),
+		keypress: {
+			'default': State.scratch.append,
+		},
+	},
 };
 
 var onkey = (event) => {
-	// are we editing a string or an expression?
-	var type = {
-		name: 'string',
-		argname: 'string',
-	}[State.lastStep(state)] || 'expr';
-
+	var type = state.mode;
 	var key = (event.shiftKey?'shift+':'') + (event.ctrlKey?'ctrl+':'') + event.key;
 	var act = keymap[type][event.type][key] || keymap[type][event.type].default;
 	if(act === undefined) return;
