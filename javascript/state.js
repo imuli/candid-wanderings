@@ -314,6 +314,9 @@ var State = (() => {
 		return replace(goUp1(state), repl);
 	};
 
+	var reduce = (recur) => (state) =>
+		replace(state, Candid.enhash(Candid.reduce(Candid.unhash(getFocusExpr(state).expr)), recur));
+
 	var wrap = (state, kind, which, loop) => {
 		var path = getFocus(state);
 		while(loop && path[path.length-1] === which){
@@ -413,6 +416,7 @@ var State = (() => {
 			toggleHash: toggleHash,
 			remove: remove,
 			replace: replace,
+			reduce: reduce,
 			wrap: wrap,
 			save: save,
 			delete: deleteExpression,

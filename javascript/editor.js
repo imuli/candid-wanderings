@@ -72,6 +72,7 @@ var keymap = {
 			'x': State.expr.extractExpr,
 			'shift+X': State.expr.extractType,
 			'-': State.expr.toggleHash,
+			'=': State.expr.reduce(true),
 			'p': (state) => State.expr.wrap(state, 'pi', 'body'),
 			'shift+P': (state) => State.expr.wrap(state, 'pi', 'type'),
 			'f': (state) => State.expr.wrap(state, 'lam', 'body'),
