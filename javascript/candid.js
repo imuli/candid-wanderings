@@ -151,14 +151,14 @@ var Candid = (() => {
 	};
 
 	// type check expression within context
-	var typecheck = r.typecheck = (e, ctx, trust) => {
+	var typecheck = r.typecheck = (e, ctx, trust, holeOk) => {
 		if(ctx === undefined) ctx = [];
 		switch(e.kind) {
 			case 'star': return Star;
 			case 'hole': return e;
 			case 'type':
 				if(trust) return e.type;
-				var type = typecheck(e.body, ctx);
+				var type = typecheck(e.body, ctx, false, holeOk);
 				if(!ceq(reduce(unhash(type), true), reduce(unhash(e.type), true), [], []))
 					throw { kind: 'Failed Type Assertion', ctx: ctx, et: e.type, at: type };
 				return e.type;
@@ -173,30 +173,30 @@ var Candid = (() => {
 					throw { kind: 'Open Expression', ctx: ctx, exp: e };
 				if(trust)
 					throw { kind: 'Type Inference', ctx: ctx, exp: e };
-				return typecheck(ctx[e.value], ctx.slice(e.value+1), true);
+				return typecheck(ctx[e.value], ctx.slice(e.value+1), true, holeOk);
 			case 'app':
-				var ft = reduce(unhash(typecheck(e.func, ctx, trust)), true);
+				var ft = reduce(unhash(typecheck(e.func, ctx, trust, holeOk)), true);
 				if(ft.kind != 'pi'){
 					throw { kind: 'Not a Function', ctx: ctx, et: Pi(Hole, Hole), exp: e, at: ft };
 				}
-				var at = typecheck(e.arg, ctx, trust);
-				if(!ceq(reduce(unhash(at), true), ft.type, [], [])){
+				var at = typecheck(e.arg, ctx, trust, holeOk);
+				if(!(holeOk && at.kind == 'hole') && !ceq(reduce(unhash(at), true), ft.type, [], [])){
 					throw { kind: 'Type Mismatch', ctx: ctx, exp: e, et: ft.type, at: at };
 				}
 				return reduce(replace(e.arg, ft, ft.body));
 			case 'pi':
 				if(trust) return Star;
-				var itt = typecheck(e.type, ctx);
-				if(itt.kind != 'star')
+				var itt = typecheck(e.type, ctx, false, holeOk);
+				if(itt.kind != 'star' && !(holeOk && itt.kind == 'hole'))
 					throw { kind: 'Invalid Input Type', ctx: ctx, et: Star, exp: e, at: itt };
-				var ott = typecheck(e.body, [e, ...ctx]);
-				if(ott.kind != 'star'){
+				var ott = typecheck(e.body, [e, ...ctx], false, holeOk);
+				if(ott.kind != 'star' && !(holeOk && ott.kind == 'hole')){
 					throw { kind: 'Invalid Output Type', ctx: ctx, et: Star, exp: e, at: ott };
 				}
 				return ott;
 			case 'lam':
-				typecheck(e.type, ctx, trust);
-				var output_type = typecheck(e.body, [e, ...ctx], trust);
+				typecheck(e.type, ctx, trust, holeOk);
+				var output_type = typecheck(e.body, [e, ...ctx], trust, holeOk);
 				return Pi(e.type, output_type, e.argname, undefined); // can't derive a name for the overall pi
 		};
 		throw "Type Error";
@@ -232,7 +232,12 @@ var Candid = (() => {
 				var argType = typecheck(expr.arg, ctx);
 				return typeAt(rest, expr.func, ctx, Pi(argType, shift(1, wish)));
 			case 'app|arg':
-				var funcType = unwrap(typecheck(expr.func, ctx));
+				var funcType;
+				try {
+					funcType = unwrap(typecheck(expr.func, ctx, false, true));
+				} catch(e) {
+					funcType = Hole;
+				}
 				if(funcType.kind != 'pi') return {type: Hole, ctx: ctx};
 				return typeAt(rest, expr.arg, ctx, funcType.type);
 		};
