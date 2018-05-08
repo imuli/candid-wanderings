@@ -175,13 +175,16 @@ var View = (() => {
 			var matches = [state.scratch];
 		}
 		if(matches){
+			state.matches = state.matches.map(Candid.enhash);
 			matches = matches.concat(
 				state.matches.map((option, i) => E('li',
 					{
 						id: 'match!' + i,
 						className: 'candid-expr'
 					},
-					viewExpr(Candid.enhash(option), ctx),
+					viewExpr(option, ctx),
+					state.mode != 'lookup' ? '' : ' : ',
+					state.mode != 'lookup' ? '' : viewType(option, ctx)
 				))
 			);
 		}
