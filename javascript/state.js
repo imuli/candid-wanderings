@@ -325,11 +325,11 @@ var State = (() => {
 		switch(kind + '|' + which){
 			case 'pi|type':
 			case 'lam|type':
-				repl = {body: expr, argname: ''};
+				repl = {body: Candid.shift(1, expr), argname: ''};
 				break;
 			case 'pi|body':
 			case 'lam|body':
-				repl = {type: Candid.shift(1, expr), argname: ''};
+				repl = {type: expr, argname: ''};
 				break;
 			case 'type|type':
 				repl = {body: expr};
