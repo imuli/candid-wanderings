@@ -1,4 +1,4 @@
-module Candid exposing (..)
+module Candid.Expr exposing (..)
 
 import Either exposing (..)
 import List exposing (head, drop)

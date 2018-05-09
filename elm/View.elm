@@ -8,7 +8,7 @@ import Style.Color
 import Element exposing (el, row, column, text)
 import Element.Attributes exposing (center, inlineStyle, padding, spacing)
 
-import Candid exposing (..)
+import Candid.Expr exposing (..)
 import Blake2s1 exposing (..)
 import Model exposing (..)
 import Message exposing (..)
@@ -100,7 +100,7 @@ colorExpr : Either a Expr -> List Expr -> String
 colorExpr eExpr ctx =
   case eExpr of
     Left _ -> "black"
-    Right expr -> "#" ++ (String.left 6 <| toHex <| Candid.hash <| muddle (List.length ctx) expr)
+    Right expr -> "#" ++ (String.left 6 <| toHex <| Candid.Expr.hash <| muddle (List.length ctx) expr)
 
 parExpr : Expr -> Int
 parExpr expr = case expr of

@@ -1,6 +1,6 @@
-module Candid.Pair exposing (..)
+module Candid.Functions.Pair exposing (..)
 
-import Candid exposing (..)
+import Candid.Expr exposing (..)
 
 pair : Expr
 pair =

@@ -1,6 +1,6 @@
-module Candid.Bool exposing (..)
+module Candid.Functions.Bool exposing (..)
 
-import Candid exposing (..)
+import Candid.Expr exposing (..)
 
 bool : Expr
 bool =

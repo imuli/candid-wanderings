@@ -1,6 +1,6 @@
-module Candid.Unit exposing (..)
+module Candid.Functions.Unit exposing (..)
 
-import Candid exposing (..)
+import Candid.Expr exposing (..)
 
 unit : Expr
 unit =

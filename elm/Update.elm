@@ -2,7 +2,7 @@ module Update exposing (update)
 import Model exposing (..)
 import Message exposing (..)
 
-import Candid exposing (Replacement(..), Step(..), Expr(..), lookup)
+import Candid.Expr exposing (Replacement(..), Step(..), Expr(..), lookup)
 
 import List exposing (reverse, drop)
 import Char exposing (fromCode)

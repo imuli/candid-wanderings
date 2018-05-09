@@ -1,6 +1,6 @@
-module Candid.List exposing (..)
+module Candid.Functions.List exposing (..)
 
-import Candid exposing (..)
+import Candid.Expr exposing (..)
 
 list : Expr
 list =

@@ -1,6 +1,6 @@
-module Candid.Nat exposing (..)
+module Candid.Functions.Nat exposing (..)
 
-import Candid exposing (..)
+import Candid.Expr exposing (..)
 
 nat : Expr
 nat =

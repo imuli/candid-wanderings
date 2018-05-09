@@ -1,6 +1,6 @@
 module Model exposing (Model)
 
-import Candid exposing (..)
+import Candid.Expr exposing (..)
 
 type alias Model =
   { expr : Expr
