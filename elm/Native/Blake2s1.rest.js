@@ -3,6 +3,7 @@ var _imuli$candid$Native_Blake2s1 = {
 		(w) => (x) => (y) => (z) =>
 		blake2s1.hash(left.concat(right), [w,x,y,z], []),
 	toHex:	blake2s1.toHex,
+	index:	(h) => (i) => h[i] | 0
 	toUni:	(h) => {
 			var a = [];
 			for(var i = 0; i < 8; i++){
