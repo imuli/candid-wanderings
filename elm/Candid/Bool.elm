@@ -31,7 +31,18 @@ and =
 
 or : Expr
 or =
-  Lam "and" "x" bool <|
+  Lam "or" "x" bool <|
     Lam "" "y" bool <|
       App "" (App "" (App "" (Ref 1) bool) true) (Ref 0)
+
+not : Expr
+not =
+  Lam "not" "x" bool <|
+    App "" (App "" (App "" (Ref 0) bool) false) true
+
+xor : Expr
+xor =
+  Lam "xor" "x" bool <|
+    Lam "" "y" bool <|
+      App "" (App "" (App "" (Ref 1) bool) (App "" not (Ref 0))) (Ref 0)
 
