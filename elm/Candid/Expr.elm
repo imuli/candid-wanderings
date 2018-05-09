@@ -200,6 +200,9 @@ ceq cx x cy y =
        (App _ f1 a1, App _ f2 a2) -> ceq cx f1 cy f2 && ceq cx a1 cy a2
        (Pi _ _ t1 b1, Pi _ _ t2 b2) -> ceq cx t1 cy t2 && ceq (x::cx) b1 (y::cy) b2
        (Lam _  _ t1 b1, Lam _ _ t2 b2) -> ceq cx t1 cy t2 && ceq (x::cx) b1 (y::cy) b2
+       -- Unexpanded Application
+       (App _ (Lam _ _ t b) a, _) -> ceq cx (replace a (Lam "" "" t b) b) cy y
+       (_, App _ (Lam _ _ t b) a) -> ceq cx x cy (replace a (Lam "" "" t b) b)
        -- A recursive type may refer back to a Pi or Lambda
        (_, Rec n) -> ceq cy y cx x
        (Rec n, _) -> case head <| drop n cx of
@@ -252,7 +255,7 @@ typecheck expr ctx trust =
     (False, Type n ty body) ->
       map reduce (typecheck body ctx trust) |>
       andThen (\actual ->
-        if ceq ctx actual ctx ty
+        if ceq ctx actual ctx (reduce ty)
            then Right ty
            else Left (TypeMismatch ctx body ty actual)
       )
