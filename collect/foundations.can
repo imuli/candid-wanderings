@@ -1,0 +1,169 @@
+Unit = r:* → a:r → r
+id = r:* ⇒ a:r ⇒ r ~
+	a
+
+const = t:* ⇒ s:* ⇒ a:t ⇒ b:s ⇒ t ~
+	a
+drop = t:* ⇒ s:* ⇒ a:t ⇒ b:s ⇒ s ~
+	b
+flip = t:* ⇒ s:* ⇒ r:* ⇒ f:(t→s→r) ⇒ b:s ⇒ a:t ⇒ r ~
+	f a b
+$ = t:* ⇒ r:* ⇒ f:(t→r) ⇒ a:t ⇒ r ~
+	f a
+. = t:* ⇒ s:* ⇒ r:* ⇒ f:(s→r) ⇒ g:(t→s) ⇒ a:t ⇒ r ~
+	f (g a)
+
+Boolean = r:* → true:r → false:r → r
+True = r:* ⇒ true:r ⇒ false:r ⇒ r ~
+	true
+False = r:* ⇒ true:r ⇒ false:r ⇒ r ~
+	false
+not = x:Boolean ⇒ Boolean ~
+	x Boolean False True
+and = x:Boolean ⇒ y:Boolean ⇒ Boolean ~
+	x Boolean y False
+or = x:Boolean ⇒ y:Boolean ⇒ Boolean ~
+	x Boolean True y
+xor = x:Boolean ⇒ y:Boolean ⇒ Boolean ~
+	x Boolean (not y) y
+eqBoolean = Eq Boolean ~
+	x:Boolean ⇒ y:Boolean ⇒ Unit ⇒ Boolean ~
+	x Boolean y (not y)
+ordBoolean = Ord Boolean ~
+	x:Boolean ⇒ y:Boolean ⇒ Unit ⇒ Ordering ~
+	x Ordering (y Ordering EQ GT) (y Ordering LT EQ)
+
+Ordering = r:* → lt:r → eq:r → gt:r → r
+LT = r:* ⇒ lt:r ⇒ eq:r ⇒ gt:r ⇒ r ~
+	lt
+EQ = r:* ⇒ lt:r ⇒ eq:r ⇒ gt:r ⇒ r ~
+	eq
+GT = r:* ⇒ lt:r ⇒ eq:r ⇒ gt:r ⇒ r ~
+	gt
+eqOrdering = Eq Ordering ~
+	x:Ordering ⇒ y:Ordering ⇒ Unit ⇒ Boolean ~
+	x Boolean (y Boolean True False False) (y Boolean False True False) (y Boolean False False True)
+
+Eq = t:* ⇒ x:t → y:t → Unit → Boolean
+Ord = t:* ⇒ x:t → y:t → Unit → Ordering
+Map = u:(*→*) ⇒ t:* → s:* → f:(t→s) → a:u t → Unit → u s
+
+Maybe = t:* ⇒ r:* → nothing:r → just:(a:t→r) → r
+Nothing = t:* ⇒ r:* ⇒ nothing:r ⇒ just:(a:t→r) ⇒ r ~
+	nothing
+Just = t:* ⇒ a:t ⇒ r:* ⇒ nothing:r ⇒ just:(a:t→r) ⇒ r ~
+	just a
+
+fromMaybe = t:* ⇒ nothing:t ⇒ may:Maybe t ⇒ t
+	may t nothing (a:t ⇒ a)
+mapMaybe = Map Maybe ~
+	t:* ⇒ s:* ⇒ f:(t→s) ⇒ a:Maybe t ⇒ Unit ⇒ Maybe s ~
+	a (Maybe s) (Nothing s) (Just s (f a))
+eqMaybe = t:* ⇒ eq:Eq t ⇒ Eq (Maybe t) ~
+	x:Maybe t ⇒ y:Maybe t ⇒ Unit ⇒ Boolean ~
+	x Boolean (y Boolean True False) (x':t ⇒ y Boolean False (eq x'))
+
+Pair = t:* ⇒ s:* ⇒ r:* → p:(t→s→r) → r
+P = t:* ⇒ s:* ⇒ a:t ⇒ b:s ⇒ r:* ⇒ p:(t→s→r) ⇒ r ~
+	p a b
+
+fst = t:* ⇒ s:* ⇒ pair:Pair t s ⇒ t ~
+	pair t (a:t ⇒ b:s ⇒ a)
+snd = t:* ⇒ s:* ⇒ pair:Pair t s ⇒ s ~
+	pair s (a:t ⇒ b:s ⇒ b)
+swap = t:* ⇒ s:* ⇒ pair:Pair t s ⇒ Pair s t ~
+	pair (Pair s t) (a:t ⇒ b:t ⇒ P s t b a)
+eqPair = t:* ⇒ s: * ⇒ eqT:Eq t ⇒ eqS:Eq s ⇒ Eq (Pair t s) ~
+	x:Pair t s ⇒ y:Pair t s ⇒ Boolean ~
+	x Boolean (xa:t ⇒ xb:s ⇒ y Boolean (ya:t ⇒ yb:s ⇒ and (eqT xa ya) (eqS xa ya)))
+
+Either = t:* ⇒ s:* ⇒ r:* → left:(a:t→r) → right:(b:s→r) → r
+Left = t:* ⇒ s:* ⇒ a:t ⇒ r:* ⇒ left:(a:t→r) ⇒ right:(b:s→r) ⇒ r ~
+	left a
+Right = t:* ⇒ s:* ⇒ b:s ⇒ r:* ⇒ left:(a:t→r) ⇒ right:(b:s→r) ⇒ r ~
+	Right b
+
+eqEither = t:* ⇒ s:* ⇒ eqT:Eq t ⇒ eqS:Eq s ⇒ Eq (Either t s) ~
+	x:Either t s ⇒ y:Either t s ⇒ Boolean ~
+	x Boolean (xa:t ⇒ y Boolean (ya:t ⇒ eqT xa ya) (yb:s ⇒ False)) (xb:s ⇒ y Boolean (ya:t ⇒ False) (yb:s ⇒ eqS xb yb))
+mapLeft = s:* ⇒ Map (t:* ⇒ Either t s) ~
+	t:* ⇒ r:* ⇒ f:(t→r) ⇒ a:Either t s ⇒ Unit ⇒ Either r s ~
+	a (Either r s) (at:t ⇒ Left r s (f at)) (bs:s ⇒ Right r s bs)
+mapRight = t:* ⇒ Map (Either t) ~
+	s:* ⇒ r:* ⇒ f:(s→r) ⇒ a:Either t s ⇒ Unit ⇒ Either t r ~
+	a (Either t r) (at:t ⇒ Left t r at) (bs:s ⇒ Right t r (f bs))
+
+Nat = r:* → z:r → s:(p:r→r) → r
+Z = r:* ⇒ z:r ⇒ s:(p:r→r) ⇒ r ~
+	z
+S = p:Nat ⇒ r:* ⇒ z:r ⇒ s:(p:r→r) ⇒ r ~
+	s (p r z s)
+
+precNat = x:Nat ⇒ Maybe Nat ~
+	x (Maybe Nat) (Nothing Nat) (m:Maybe Nat ⇒ m (Maybe Nat) (Just Z) (n:Nat ⇒ Just (S n)))
+
+addNat = x:Nat ⇒ y:Nat ⇒ Nat ~
+	x Nat y S
+
+mulNat = x:Nat ⇒ y:Nat ⇒ Nat ~
+	x Nat Z (addNat y)
+
+0 = Z
+1 = S Z
+2 = S (S Z)
+3 = S (S (S Z))
+4 = S (S (S (S Z)))
+5 = S (S (S (S (S Z))))
+6 = S (S (S (S (S (S Z)))))
+6 = S 5
+7 = S 6
+8 = S 7
+
+Natural = r:* → zero:r → succ:(n:Natural→r) → r
+Zero = r:* ⇒ zero:r ⇒ succ:(n:Natural→r) ⇒ zero
+Succ = n:Natural ⇒ r:* ⇒ zero:r ⇒ succ:(n:Natural→r) ⇒ succ n
+
+Crumb = Pair Boolean Boolean
+crumb = x:Boolean ⇒ y:Boolean ⇒ P Boolean Boolean x y
+
+Nibble = Pair Crumb Crumb
+nibble = x:Crumb ⇒ y:Crumb ⇒ P Crumb Crumb x y
+
+Byte = Pair Nibble Nibble
+byte = x:Nibble ⇒ y:Nibble ⇒ P Nibble Nibble x y
+
+Word = Pair Byte Byte
+word = x:Byte ⇒ y:Byte ⇒ P Byte Byte x y
+
+Quad = Pair Word Word
+quad = x:Word ⇒ y:Word ⇒ P Word Word x y
+
+addBoolean = x:Boolean ⇒ y:Boolean ⇒ z:Boolean ⇒ Pair Boolean Boolean ~
+	x (Pair Boolean Boolean)
+		(y (Pair Boolean Boolean)
+			(z (Pair Boolean Boolean)
+				(P Boolean Boolean False False)
+				(P Boolean Boolean False True))
+			(z (Pair Boolean Boolean)
+				(P Boolean Boolean False True)
+				(P Boolean Boolean True False)))
+		(y (Pair Boolean Boolean)
+			(z (Pair Boolean Boolean)
+				(P Boolean Boolean False True)
+				(P Boolean Boolean True False))
+			(z (Pair Boolean Boolean)
+				(P Boolean Boolean True False)
+				(P Boolean Boolean True True)))
+
+# addCrumb = x:Crumb ⇒ y:Crumb ⇒ z:Boolean ⇒ Pair Boolean Crumb ~
+# 	x (Pair Boolean Crumb) (xx:Boolean ⇒ xy:Boolean ⇒ y (Pair Boolean Crumb) (yx:Boolean ⇒ yy:Boolean ⇒ (addBoolean xy yy False) (Pair Boolean Crumb) (carry:Boolean ⇒ right:Boolean ⇒ (addBoolean xx yx carry) (Pair Boolean Crumb) (carryOut:Boolean ⇒ left:Boolean ⇒ P Boolean Crumb carryOut (crumb left right)))))
+
+addBits = t:* ⇒ addT:(x:t→y:t→z:Boolean→Pair Boolean t) ⇒ x:Pair t t ⇒ y:Pair t t ⇒ z:Boolean ⇒ Pair Boolean (Pair t t) ~
+	x (Pair Boolean (Pair t t)) (xx:t ⇒ xy:t ⇒ y (Pair Boolean (Pair t t)) (yx:t ⇒ yy:t ⇒ (addT xy yy False) (Pair Boolean (Pair t t)) (carry:Boolean ⇒ right:t ⇒ (addT xx yx carry) (Pair Boolean (Pair t t)) (carryOut:Boolean ⇒ left:t ⇒ P Boolean (Pair t t) carryOut (P t t left right)))))
+
+addCrumb = addBits Boolean addBoolean
+addNibble = addBits Crumb addCrumb
+addByte = addBits Nibble addNibble
+addWord = addBits Byte addByte
+addQuad = addBits Word addWord
+
