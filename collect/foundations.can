@@ -167,3 +167,104 @@ addByte = addBits Nibble addNibble
 addWord = addBits Byte addByte
 addQuad = addBits Word addWord
 
+addModWord = x:Word → y:Word → Word ~
+	second Boolean Word (addWord x y)
+
+List = t:* ⇒ r:* → nil:r → cons:(x:t → xs:List t → r) → r
+Nil = t:* ⇒ r:* ⇒ nil:r ⇒ cons:(x:t → xs:List t → r) ⇒ r ~
+	nil
+Cons = t:* ⇒ x:t ⇒ xs:List t ⇒ r:* ⇒ nil:r ⇒ cons:(x:t → xs:List t → r) ⇒ r ~
+	cons x xs
+
+concat = t:* ⇒ xs:List t ⇒ ys:List t ⇒ List t ~
+	xs (List t) ys (x': t ⇒ xs':List t ⇒ Cons t x' (concat xs' ys))
+index = t:* ⇒ xs:List t ⇒ n:Natural ⇒ Maybe t ~
+	xs (Maybe t) (Nothing t) (x:t ⇒ xs':List t ⇒ n (Maybe t) (Just t x) (index xs'))
+length = t:* ⇒ xs:List t ⇒ Natural ~
+	xs Natural Zero (t ⇒ xs':List t ⇒ Succ (length t xs'))
+
+mapList = Map List ~
+	t:* ⇒ s:* ⇒ f:(a:t→s) ⇒ xs:List t ⇒ Unit ⇒ List s ~
+	xs (List s) (Nil s) (x:t ⇒ xs':List t ⇒ Cons s (f x) (mapList t s f xs' id)
+
+String = List Quad
+NilS = Nil Quad
+ConsS = Cons Quad
+
+concatS = concat Quad
+charAt = index Quad
+
+Expression = r:* →
+	star:r →
+	hole:r →
+	ref:(n:Natural → r) →
+	rec:(n:Natural → r) →
+	hash:(hash:List Quad → name:String → r) →
+	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) →
+	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) →
+	apply:(function:Expression → argument:Expression → name:String → r) →
+	type:(outType:Expression → body:Expression → name:String → r) →
+	r
+
+Context = List Expression
+NilContext = Nil Expression
+ConsContext = Cons Expression
+
+-- fold with access to context and original sub-expressions
+foldExpressionContextExpression = r:* ⇒
+	star:(ctx:Context → r) ⇒
+	hole:(ctx:Context → r) ⇒
+	ref:(ctx:Context → n:Natural → r) ⇒
+	rec:(ctx:Context → n:Natural → r) ⇒
+	hash:(ctx:Context → hash:List Quad → name:String → r) ⇒
+	forall:(ctx:Context → inType':r → outType':r → inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
+	lambda:(ctx:Context → inType':r → body':r → inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	apply:(ctx:Context → function':r → argument':r → function:Expression → argument:Expression → name:String → r) ⇒
+	type:(ctx:Context → outType':r → body':r → outType:Expression → body:Expression → name:String → r) ⇒
+	outer = ctx:Context ⇒
+	inner = expr:Expression ⇒
+	r ~
+	expr r (star ctx) (hole ctx) (ref ctx) (rec ctx) (hash ctx)
+		(inType:Expression ⇒ outType:Expression ⇒ forall ctx (inner inType) (outer (ConsContext expr ctx) outType) inType outType)
+		(inType:Expression ⇒ body:Expression ⇒ lambda ctx (inner inType) (outer (ConsContext expr ctx) body) inType body)
+		(function:Expression ⇒ argument:Expression ⇒ apply ctx (inner function) (inner argument) function argument)
+		(outType:Expression ⇒ body:Expression ⇒ type ctx (inner outType) (inner body) outType body)
+
+-- fold with access to context
+foldExpressionContext = r:* ⇒
+	star:(ctx:Context → r) ⇒
+	hole:(ctx:Context → r) ⇒
+	ref:(ctx:Context → n:Natural → r) ⇒
+	rec:(ctx:Context → n:Natural → r) ⇒
+	hash:(ctx:Context → hash:List Quad → name:String → r) ⇒
+	forall:(ctx:Context → inType':r → outType':r → name:String → boundName:String → r) ⇒
+	lambda:(ctx:Context → inType':r → body':r → name:String → boundName:string → r) ⇒
+	apply:(ctx:Context → function':r → argument':r → name:String → r) ⇒
+	type:(ctx:Context → outType':r → body':r → name:String → r) ⇒
+	outer = ctx:Context ⇒
+	inner = expr:Expression ⇒
+	r ~
+	expr r (star ctx) (hole ctx) (ref ctx) (rec ctx) (hash ctx)
+		(inType:Expression ⇒ outType:Expression ⇒ forall ctx (inner inType) (outer (ConsContext expr ctx) outType))
+		(inType:Expression ⇒ body:Expression ⇒ lambda ctx (inner inType) (outer (ConsContext expr ctx) body))
+		(function:Expression ⇒ argument:Expression ⇒ apply ctx (inner function) (inner argument))
+		(outType:Expression ⇒ body:Expression ⇒ type ctx (inner outType) (inner body))
+
+shift = push:(Natural→Natural) ⇒ (Expression → Expression) ~
+	foldExpressionContext Expression (Context⇒Star) (Context⇒Hole)
+	(ctx:Context ⇒ n:Natural ⇒ Ref ((ordNatural (length ctx) n) Natural n n (push n))
+	(ctx:Context ⇒ n:Natural ⇒ Rec ((ordNatural (length ctx) n) Natural n n (push n)))
+	(Context⇒Hash) (Context⇒Forall) (Context⇒Lambda) (Context⇒Apply) (Context⇒Type) NilCtx
+
+replace = ref:Expression ⇒ rec:Expression ⇒ expr:Expression ⇒ Expression ~
+	shift PrecZ (foldExpressionContext Expression (Context⇒Star) (Context⇒Hole)
+	(ctx:Context ⇒ n:Natural ⇒ (eqNatural (length ctx) n) Expression (shift (addNatural (Succ (length ctx))) ref) (Ref n))
+	(ctx:Context ⇒ n:Natural ⇒ (eqNatural (length ctx) n) Expression (shift (addNatural (Succ (length ctx))) rec) (Rec n))
+	(Context⇒Hash) (Context⇒Forall) (Context⇒Lambda) (Context⇒Apply) (Context⇒Type) NilCtx expr)
+
+reduce = expr:Expression ⇒ Expression ~
+	foldExpressionContext Expression (Context⇒Star) (Context⇒Hole) (Context⇒Ref) (Context⇒Rec) (Context⇒Hash) (Context⇒Forall) (Context⇒Lambda)
+	(Context ⇒ function:Expression ⇒ argument:Expression ⇒ name:String ⇒ (repl:Expression ⇒ function Expression repl repl (Natural⇒repl) (Natural⇒repl) (List Word⇒String⇒repl) (Expression⇒Expression⇒String⇒String⇒repl) (Expression ⇒ body:Expression ⇒ String ⇒ String ⇒ reduce (replace argument function body)) (Expression ⇒ Expression ⇒ String ⇒ repl) (Expression ⇒ Expression ⇒ String ⇒ repl)) (Apply function argument name))
+	(Context⇒Type)
+
+
