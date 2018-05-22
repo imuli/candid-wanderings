@@ -206,6 +206,132 @@ Expression = r:* →
 	type:(outType:Expression → body:Expression → name:String → r) →
 	r
 
+Star = r:* ⇒
+	star:r ⇒
+	hole:r ⇒
+	ref:(n:Natural → r) ⇒
+	rec:(n:Natural → r) ⇒
+	hash:(hash:List Quad → name:String → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	apply:(function:Expression → argument:Expression → name:String → r) ⇒
+	type:(outType:Expression → body:Expression → name:String → r) ⇒
+	star
+
+Hole = r:* ⇒
+	star:r ⇒
+	hole:r ⇒
+	ref:(n:Natural → r) ⇒
+	rec:(n:Natural → r) ⇒
+	hash:(hash:List Quad → name:String → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	apply:(function:Expression → argument:Expression → name:String → r) ⇒
+	type:(outType:Expression → body:Expression → name:String → r) ⇒
+	hole
+
+Ref = n:Natural ⇒
+	r:* ⇒
+	star:r ⇒
+	hole:r ⇒
+	ref:(n:Natural → r) ⇒
+	rec:(n:Natural → r) ⇒
+	hash:(hash:List Quad → name:String → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	apply:(function:Expression → argument:Expression → name:String → r) ⇒
+	type:(outType:Expression → body:Expression → name:String → r) ⇒
+	ref n
+
+Rec = n:Natural ⇒
+	r:* ⇒
+	star:r ⇒
+	hole:r ⇒
+	ref:(n:Natural → r) ⇒
+	rec:(n:Natural → r) ⇒
+	hash:(hash:List Quad → name:String → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	apply:(function:Expression → argument:Expression → name:String → r) ⇒
+	type:(outType:Expression → body:Expression → name:String → r) ⇒
+	rec n
+
+Hash = value:List Quad ⇒
+	name:String ⇒
+	r:* ⇒
+	star:r ⇒
+	hole:r ⇒
+	ref:(n:Natural → r) ⇒
+	rec:(n:Natural → r) ⇒
+	hash:(hash:List Quad → name:String → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	apply:(function:Expression → argument:Expression → name:String → r) ⇒
+	type:(outType:Expression → body:Expression → name:String → r) ⇒
+	hash value name
+
+Forall = inType:Expression ⇒
+	outType:Expression ⇒
+	name:String ⇒
+	boundName:String ⇒
+	r:* ⇒
+	star:r ⇒
+	hole:r ⇒
+	ref:(n:Natural → r) ⇒
+	rec:(n:Natural → r) ⇒
+	hash:(hash:List Quad → name:String → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	apply:(function:Expression → argument:Expression → name:String → r) ⇒
+	type:(outType:Expression → body:Expression → name:String → r) ⇒
+	forall inType outType name boundName
+
+Lambda = inType:Expression ⇒
+	body:Expression ⇒
+	name:String ⇒
+	boundName:String ⇒
+	r:* ⇒
+	star:r ⇒
+	hole:r ⇒
+	ref:(n:Natural → r) ⇒
+	rec:(n:Natural → r) ⇒
+	hash:(hash:List Quad → name:String → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	apply:(function:Expression → argument:Expression → name:String → r) ⇒
+	type:(outType:Expression → body:Expression → name:String → r) ⇒
+	lambda inType body name boundName
+
+Apply = function:Expression ⇒
+	argument:Expression ⇒
+	name:String ⇒
+	r:* ⇒
+	star:r ⇒
+	hole:r ⇒
+	ref:(n:Natural → r) ⇒
+	rec:(n:Natural → r) ⇒
+	hash:(hash:List Quad → name:String → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	apply:(function:Expression → argument:Expression → name:String → r) ⇒
+	type:(outType:Expression → body:Expression → name:String → r) ⇒
+	apply function argument name
+
+Type = outType:Expression ⇒
+	body:Expression ⇒
+	name:String ⇒
+	r:* ⇒
+	star:r ⇒
+	hole:r ⇒
+	ref:(n:Natural → r) ⇒
+	rec:(n:Natural → r) ⇒
+	hash:(hash:List Quad → name:String → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	apply:(function:Expression → argument:Expression → name:String → r) ⇒
+	type:(outType:Expression → body:Expression → name:String → r) ⇒
+	type outType body name
+
 Context = List Expression
 NilContext = Nil Expression
 ConsContext = Cons Expression
