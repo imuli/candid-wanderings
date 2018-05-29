@@ -103,21 +103,24 @@ find store ctx str =
 number :: Store -> Expression String -> Expression Word
 number store = num []
  where
+  withName nm fn expr = if nm == ""
+                           then fn expr
+                           else rename (nameOf expr) $ fn $ rename nm expr
   num :: Context String -> Expression String -> Expression Word
   num ctx = num'
    where
    num' expr = case expr of
      Star -> Star
      Rec s -> case find store ctx s of
-                   Nothing -> Rec (-1)
+                   Nothing -> Hole s
                    Just repl -> repl
      Ref s -> case find store ctx s of
-                   Nothing -> Ref (-1)
+                   Nothing -> Hole s
                    Just repl -> repl
      Pi name bindName inType outType -> Pi name bindName (num' inType) (num (expr:ctx) outType)
      Lambda name bindName inType body -> Lambda name bindName (num' inType) (num (expr:ctx) body)
      Apply name function argument -> Apply name (num' function) (num' argument)
-     Assert name outType body -> Assert name (num' outType) (num' body)
+     Assert name outType body -> Assert name (num' outType) (withName name num' body)
      Hash h -> Hash h
      Hole s -> Hole s
 

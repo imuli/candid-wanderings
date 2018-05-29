@@ -133,6 +133,8 @@ S = p:Nat ⇒ r:* ⇒ z:r ⇒ s:(p:r→r) ⇒ r ~
 
 precNat = x:Nat ⇒ Maybe Nat ~
 	x (Maybe Nat) (Nothing Nat) (m:Maybe Nat ⇒ m (Maybe Nat) (Just Z) (n:Nat ⇒ Just (S n)))
+precNatZ = x:Nat ⇒ Nat ~
+	(precNat x) Nat Z (id Nat)
 addNat = x:Nat ⇒ y:Nat ⇒ Nat ~
 	x Nat y S
 mulNat = x:Nat ⇒ y:Nat ⇒ Nat ~
@@ -214,7 +216,7 @@ addWord = addBits Byte addByte
 addQuad = addBits Word addWord
 
 addModWord = x:Word → y:Word → Word ~
-	second Boolean Word (addWord x y)
+	snd Boolean Word (addWord x y)
 
 List = t:* ⇒ r:* → nil:r → cons:(x:t → xs:List t → r) → r
 Nil = t:* ⇒ r:* ⇒ nil:r ⇒ cons:(x:t → xs:List t → r) ⇒ r ~
@@ -249,7 +251,7 @@ mapList = Map List ~
 filterList = Filter List ~
 	t:* ⇒ pred:(a:t→Boolean) ⇒ filter' = xs:List t ⇒ Unit ⇒ List t ~
   xs (List t) (Nil t)
-	   (x':t ⇒ xs':List t ⇒ (ys':List t ⇒ (pred x) (List t) ys' (Cons t x' ys'))
+	   (x':t ⇒ xs':List t ⇒ (ys':List t ⇒ (pred x') (List t) ys' (Cons t x' ys'))
                           (filter' xs' id))
 
 String = List Quad
@@ -264,8 +266,8 @@ Expression = r:* →
 	ref:(n:Natural → r) →
 	rec:(n:Natural → r) →
 	hash:(hash:List Quad → name:String → r) →
-	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) →
-	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) →
+	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) →
+	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) →
 	apply:(function:Expression → argument:Expression → name:String → r) →
 	type:(outType:Expression → body:Expression → name:String → r) →
 	r
@@ -276,8 +278,8 @@ Star = r:* ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
 	hash:(hash:List Quad → name:String → r) ⇒
-	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
-	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
 	type:(outType:Expression → body:Expression → name:String → r) ⇒
 	star
@@ -288,8 +290,8 @@ Hole = r:* ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
 	hash:(hash:List Quad → name:String → r) ⇒
-	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
-	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
 	type:(outType:Expression → body:Expression → name:String → r) ⇒
 	hole
@@ -301,8 +303,8 @@ Ref = n:Natural ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
 	hash:(hash:List Quad → name:String → r) ⇒
-	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
-	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
 	type:(outType:Expression → body:Expression → name:String → r) ⇒
 	ref n
@@ -314,8 +316,8 @@ Rec = n:Natural ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
 	hash:(hash:List Quad → name:String → r) ⇒
-	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
-	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
 	type:(outType:Expression → body:Expression → name:String → r) ⇒
 	rec n
@@ -328,8 +330,8 @@ Hash = value:List Quad ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
 	hash:(hash:List Quad → name:String → r) ⇒
-	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
-	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
 	type:(outType:Expression → body:Expression → name:String → r) ⇒
 	hash value name
@@ -344,8 +346,8 @@ Forall = inType:Expression ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
 	hash:(hash:List Quad → name:String → r) ⇒
-	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
-	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
 	type:(outType:Expression → body:Expression → name:String → r) ⇒
 	forall inType outType name boundName
@@ -360,8 +362,8 @@ Lambda = inType:Expression ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
 	hash:(hash:List Quad → name:String → r) ⇒
-	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
-	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
 	type:(outType:Expression → body:Expression → name:String → r) ⇒
 	lambda inType body name boundName
@@ -375,8 +377,8 @@ Apply = function:Expression ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
 	hash:(hash:List Quad → name:String → r) ⇒
-	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
-	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
 	type:(outType:Expression → body:Expression → name:String → r) ⇒
 	apply function argument name
@@ -390,19 +392,16 @@ Type = outType:Expression ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
 	hash:(hash:List Quad → name:String → r) ⇒
-	forall:(inType:Expression → outType:Expression → name:String → boundName:string → r) ⇒
-	lambda:(inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
+	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
 	type:(outType:Expression → body:Expression → name:String → r) ⇒
 	type outType body name
 
 Context = List Expression
-
 NilContext = Nil Expression
-
 ConsContext = Cons Expression
 
--- fold with access to context and original sub-expressions
 foldExpressionContextExpression = r:* ⇒
 	star:(ctx:Context → r) ⇒
 	hole:(ctx:Context → r) ⇒
@@ -410,7 +409,7 @@ foldExpressionContextExpression = r:* ⇒
 	rec:(ctx:Context → n:Natural → r) ⇒
 	hash:(ctx:Context → hash:List Quad → name:String → r) ⇒
 	forall:(ctx:Context → inType':r → outType':r → inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
-	lambda:(ctx:Context → inType':r → body':r → inType:Expression → body:Expression → name:String → boundName:string → r) ⇒
+	lambda:(ctx:Context → inType':r → body':r → inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(ctx:Context → function':r → argument':r → function:Expression → argument:Expression → name:String → r) ⇒
 	type:(ctx:Context → outType':r → body':r → outType:Expression → body:Expression → name:String → r) ⇒
 	outer = ctx:Context ⇒
@@ -422,7 +421,6 @@ foldExpressionContextExpression = r:* ⇒
 		(function:Expression ⇒ argument:Expression ⇒ apply ctx (inner function) (inner argument) function argument)
 		(outType:Expression ⇒ body:Expression ⇒ type ctx (inner outType) (inner body) outType body)
 
--- fold with access to context
 foldExpressionContext = r:* ⇒
 	star:(ctx:Context → r) ⇒
 	hole:(ctx:Context → r) ⇒
@@ -430,7 +428,7 @@ foldExpressionContext = r:* ⇒
 	rec:(ctx:Context → n:Natural → r) ⇒
 	hash:(ctx:Context → hash:List Quad → name:String → r) ⇒
 	forall:(ctx:Context → inType':r → outType':r → name:String → boundName:String → r) ⇒
-	lambda:(ctx:Context → inType':r → body':r → name:String → boundName:string → r) ⇒
+	lambda:(ctx:Context → inType':r → body':r → name:String → boundName:String → r) ⇒
 	apply:(ctx:Context → function':r → argument':r → name:String → r) ⇒
 	type:(ctx:Context → outType':r → body':r → name:String → r) ⇒
 	outer = ctx:Context ⇒
@@ -446,16 +444,19 @@ shift = push:(Natural→Natural) ⇒ (Expression → Expression) ~
 	foldExpressionContext Expression (Context⇒Star) (Context⇒Hole)
 	(ctx:Context ⇒ n:Natural ⇒ Ref ((ordNatural (length ctx) n) Natural n n (push n)))
 	(ctx:Context ⇒ n:Natural ⇒ Rec ((ordNatural (length ctx) n) Natural n n (push n)))
-	(Context⇒Hash) (Context⇒Forall) (Context⇒Lambda) (Context⇒Apply) (Context⇒Type) NilCtx
+	(Context⇒Hash) (Context⇒Forall) (Context⇒Lambda) (Context⇒Apply) (Context⇒Type) NilContext
 
 replace = ref:Expression ⇒ rec:Expression ⇒ expr:Expression ⇒ Expression ~
-	shift PrecZ (foldExpressionContext Expression (Context⇒Star) (Context⇒Hole)
+	shift precNatZ (foldExpressionContext Expression (Context⇒Star) (Context⇒Hole)
 	(ctx:Context ⇒ n:Natural ⇒ (eqNatural (length ctx) n) Expression (shift (addNatural (Succ (length ctx))) ref) (Ref n))
 	(ctx:Context ⇒ n:Natural ⇒ (eqNatural (length ctx) n) Expression (shift (addNatural (Succ (length ctx))) rec) (Rec n))
-	(Context⇒Hash) (Context⇒Forall) (Context⇒Lambda) (Context⇒Apply) (Context⇒Type) NilCtx expr)
+	(Context⇒Hash) (Context⇒Forall) (Context⇒Lambda) (Context⇒Apply) (Context⇒Type) NilContext expr)
 
 reduce = expr:Expression ⇒ Expression ~
 	foldExpressionContext Expression (Context⇒Star) (Context⇒Hole) (Context⇒Ref) (Context⇒Rec) (Context⇒Hash) (Context⇒Forall) (Context⇒Lambda)
-	(Context ⇒ function:Expression ⇒ argument:Expression ⇒ name:String ⇒ (repl:Expression ⇒ function Expression repl repl (Natural⇒repl) (Natural⇒repl) (List Word⇒String⇒repl) (Expression⇒Expression⇒String⇒String⇒repl) (Expression ⇒ body:Expression ⇒ String ⇒ String ⇒ reduce (replace argument function body)) (Expression ⇒ Expression ⇒ String ⇒ repl) (Expression ⇒ Expression ⇒ String ⇒ repl)) (Apply function argument name))
+	(Context ⇒ function:Expression ⇒ argument:Expression ⇒ name:String ⇒ (repl:Expression ⇒ function Expression repl repl (Natural⇒repl) (Natural⇒repl) (List Word⇒String⇒repl) (Expression⇒Expression⇒String⇒String⇒repl)
+		(Expression ⇒ body:Expression ⇒ String ⇒ String ⇒ reduce (replace argument function body))
+		(Expression ⇒ Expression ⇒ String ⇒ repl) (Expression ⇒ Expression ⇒ String ⇒ repl)) (Apply function argument name)
+	)
 	(Context⇒Type)
 
