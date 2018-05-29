@@ -20,7 +20,7 @@ data Expression t
   | Lambda String String (Expression t) (Expression t)
   | Apply String (Expression t) (Expression t)
   | Assert String (Expression t) (Expression t)
-  | Hash H.Hash
+  | Hash String H.Hash
   deriving (Show)
 
 type Context t = [Expression t]
@@ -34,7 +34,7 @@ hash (Pi _ _ iT oT) = H.hash (hash iT) (hash oT) (0,0,0,3)
 hash (Lambda _ _ iT b) = H.hash (hash iT) (hash b) (0,0,0,2)
 hash (Apply _ f a) = H.hash (hash f) (hash a) (0,0,0,1)
 hash (Assert _ _ b) = hash b
-hash (Hash h) = h
+hash (Hash _ h) = h
 
 closed :: Integral t => Expression t -> Bool
 closed = closed' 0
@@ -54,6 +54,7 @@ nameOf (Pi n _ _ _) = n
 nameOf (Lambda n _ _ _) = n
 nameOf (Apply n _ _) = n
 nameOf (Assert n _ _) = n
+nameOf (Hash n _) = n
 nameOf _ = ""
 
 boundNameOf :: Expression t -> String

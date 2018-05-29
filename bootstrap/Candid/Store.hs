@@ -42,7 +42,7 @@ smush :: Store -> Expression Word -> Expression Word
 smush store = sm
   where
     lu expr = let h = Candid.Expression.hash expr
-               in maybe expr (const $ Hash h) $ HM.lookup h store
+               in maybe expr (const $ Hash (nameOf expr) h) $ HM.lookup h store
     sm :: Expression Word -> Expression Word
     sm (Pi n bn iT oT) = lu $ Pi n bn (sm iT) (sm oT)
     sm (Lambda n bn iT b) = lu $ Lambda n bn (sm iT) (sm b)
@@ -59,5 +59,5 @@ expand store = ex
     ex (Lambda n bn iT b) = Lambda n bn (ex iT) (ex b)
     ex (Apply n f a) = Apply n (ex f) (ex a)
     ex (Assert n oT b) = Assert n (ex oT) (ex b)
-    ex (Hash h) = maybe (Hash h) (ex . expr) $ HM.lookup h store
+    ex (Hash n h) = maybe (Hash n h) (ex . expr) $ HM.lookup h store
 

@@ -121,7 +121,7 @@ number store = num []
      Lambda name bindName inType body -> Lambda name bindName (num' inType) (num (expr:ctx) body)
      Apply name function argument -> Apply name (num' function) (num' argument)
      Assert name outType body -> Assert name (num' outType) (withName name num' body)
-     Hash h -> Hash h
+     Hash n h -> Hash n h
      Hole s -> Hole s
 
 -- translate and save a list of expressions
@@ -133,3 +133,5 @@ numberInto store = foldl into store
                           (h, newStore) = add store numExpr
                        in newStore
 
+parseText :: String -> Either ParseError [Maybe (Expression String)]
+parseText = parse pFile ""
