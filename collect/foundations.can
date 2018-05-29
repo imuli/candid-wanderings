@@ -146,6 +146,8 @@ Succ = n:Natural ⇒ r:* ⇒ zero:r ⇒ succ:(n:Natural→r) ⇒ succ n
 
 precNatural = n:Natural ⇒ Maybe Natural ~
 	n (Maybe Natural) (Nothing Natural) (Just Natural)
+precNaturalZ = x:Natural ⇒ Natural ~
+	x Natural Z (id Natural)
 addNatural = n:Natural ⇒ m:Natural ⇒ Natural ~
 	m Natural n (addNatural (Succ n))
 mulNatural = n:Natural ⇒ m:Natural ⇒ Natural ~
@@ -447,7 +449,7 @@ shift = push:(Natural→Natural) ⇒ (Expression → Expression) ~
 	(Context⇒Hash) (Context⇒Forall) (Context⇒Lambda) (Context⇒Apply) (Context⇒Type) NilContext
 
 replace = ref:Expression ⇒ rec:Expression ⇒ expr:Expression ⇒ Expression ~
-	shift precNatZ (foldExpressionContext Expression (Context⇒Star) (Context⇒Hole)
+	shift precNaturalZ (foldExpressionContext Expression (Context⇒Star) (Context⇒Hole)
 	(ctx:Context ⇒ n:Natural ⇒ (eqNatural (length ctx) n) Expression (shift (addNatural (Succ (length ctx))) ref) (Ref n))
 	(ctx:Context ⇒ n:Natural ⇒ (eqNatural (length ctx) n) Expression (shift (addNatural (Succ (length ctx))) rec) (Rec n))
 	(Context⇒Hash) (Context⇒Forall) (Context⇒Lambda) (Context⇒Apply) (Context⇒Type) NilContext expr)
