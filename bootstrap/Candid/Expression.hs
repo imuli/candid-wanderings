@@ -129,7 +129,7 @@ reduce = recurseContext Star reduce' []
                                      _ -> expr
 
 -- are the two expressions equivalent, given their contexts
-equiv :: (H.Hash -> Expression Int) -> Context Int -> Expression Int -> Context Int -> Expression Int -> Bool
+equiv :: (H.Hash -> Maybe (Expression Int)) -> Context Int -> Expression Int -> Context Int -> Expression Int -> Bool
 equiv hashExpr = eq
   where
     eq cx x cy y =
@@ -153,7 +153,11 @@ equiv hashExpr = eq
            (_, Rec n) -> case drop n cy of [] -> False; (y':cy') -> eq cx x cy' y'
            (Apply _ _ _, _) -> eq cx (reduce x) cy y
            (_, Apply _ _ _) -> eq cx x cy (reduce y)
-           (Hash _ h, _) -> eq cx (hashExpr h) cy y
-           (_, Hash _ h) -> eq cx x cy (hashExpr h)
+           (Hash _ h, _) -> case hashExpr h of
+                                 Nothing -> h == hash y
+                                 Just x' -> eq cx x' cy y
+           (_, Hash _ h) -> case hashExpr h of
+                                 Nothing -> h == hash x
+                                 Just y' -> eq cx x cy y'
            (_, _) -> False
 

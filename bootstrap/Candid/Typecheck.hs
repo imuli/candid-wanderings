@@ -17,7 +17,7 @@ data TypeError
 index :: Int -> [a] -> Maybe a
 index i = listToMaybe . drop i
 
-typecheck :: (H.Hash -> Expression Int) -> (H.Hash -> Expression Int) -> Bool -> Bool -> Context Int -> Expression Int -> Either TypeError (Expression Int)
+typecheck :: (H.Hash -> Maybe (Expression Int)) -> (H.Hash -> Maybe (Expression Int)) -> Bool -> Bool -> Context Int -> Expression Int -> Either TypeError (Expression Int)
 typecheck hashExpr hashType holeOk = tc
   where
     isStar ctx parent Star = Right Star

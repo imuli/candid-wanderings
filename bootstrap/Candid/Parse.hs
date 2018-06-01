@@ -1,6 +1,7 @@
 module Candid.Parse where
 
 import Candid.Expression
+import Candid.Typecheck
 import Candid.Store
 import Text.Parsec
 import Text.Parsec.Token
@@ -84,29 +85,29 @@ pFile :: Parsec String st [Maybe (Expression String)]
 pFile = pExprs <* eof
 
 -- search for a name in context
-search :: String -> Context String -> Maybe (Expression Word)
+search :: String -> Context String -> Maybe (Expression Int)
 search str = search' 0 where
-  search' :: Word -> Context String -> Maybe (Expression Word)
+  search' :: Int -> Context String -> Maybe (Expression Int)
   search' _ []        = Nothing
   search' n (x : ctx) = if str == nameOf x then Just (Rec n)
                         else if str == boundNameOf x then Just (Ref n)
                         else search' (n+1) ctx
 
 -- look up a name in context and store
-find :: Store -> Context String -> String -> Maybe (Expression Word)
+find :: Store -> Context String -> String -> Maybe (Expression Int)
 find store ctx str =
     case search str ctx of
          Just expr -> Just expr
          Nothing -> fmap expr $ listToMaybe $ byName store str
 
--- translate from Expression String to Expression Word
-number :: Store -> Expression String -> Expression Word
+-- translate from Expression String to Expression Int
+number :: Store -> Expression String -> Expression Int
 number store = num []
  where
   withName nm fn expr = if nm == ""
                            then fn expr
                            else rename (nameOf expr) $ fn $ rename nm expr
-  num :: Context String -> Expression String -> Expression Word
+  num :: Context String -> Expression String -> Expression Int
   num ctx = num'
    where
    num' expr = case expr of
@@ -124,14 +125,17 @@ number store = num []
      Hash n h -> Hash n h
      Hole s -> Hole s
 
+
+mapLeft :: (a->c) -> Either a b -> Either c b
+mapLeft f (Left x) = Left (f x)
+mapLeft _ (Right x) = Right x
+
 -- translate and save a list of expressions
-numberInto :: Store -> [Expression String] -> Store
-numberInto store = foldl into store
+numberInto :: Store -> [Expression String] -> Either (String, TypeError) Store
+numberInto store = foldl into $ Right store
   where
-    into :: Store -> Expression String -> Store
-    into store expr = let numExpr = number store expr
-                          (h, newStore) = add store numExpr
-                       in newStore
+    into :: Either (String, TypeError) Store -> Expression String -> Either (String, TypeError) Store
+    into est expr = est >>= \store -> fmap snd $ (mapLeft (\te -> (nameOf expr, te)) $ add store $ number store expr)
 
 parseText :: String -> Either ParseError [Maybe (Expression String)]
 parseText = parse pFile ""

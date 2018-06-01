@@ -3,18 +3,20 @@ module Candid.Store
   , Store(..)
   , empty
   , byName
+  , byHash
   , add
   , smush
   , expand
   ) where
 
 import Candid.Expression
+import Candid.Typecheck
 import qualified Data.HashMap.Strict as HM
 import qualified Blake2s1 as H
 
 data Entry = Entry { name :: String
-                   , kind :: Expression Word
-                   , expr :: Expression Word
+                   , kind :: Expression Int
+                   , expr :: Expression Int
                    , hash :: H.Hash
                    } deriving (Show)
 
@@ -27,23 +29,24 @@ empty = HM.empty
 byName :: Store -> String -> [Entry]
 byName store n = Prelude.map (\(k, v) -> v) $ HM.toList $ HM.filter ((n ==) . name) store
 
+-- get the entry with hash
+byHash :: Store -> H.Hash -> Maybe Entry
+byHash store h = HM.lookup h store
+
 -- add expression to store
-add :: Store -> Expression Word -> (Maybe H.Hash, Store)
-add store expr = let c = closed expr
-                     k = Candid.Expression.hash expr
-                     expr' = smush store expr
-                     entry = (Entry (nameOf expr) (Hole "") expr' k)
-                  in if not c
-                        then (Nothing, store)
-                        else (Just k, HM.insert k entry store)
+add :: Store -> Expression Int -> Either TypeError (H.Hash, Store)
+add store x = let x' = smush store x
+                  t = typecheck (fmap expr . byHash store) (fmap kind . byHash store) False False [] x'
+                  k = Candid.Expression.hash x'
+               in t >>= \ty -> Right (k, HM.insert k (Entry (nameOf x) ty x' k) store)
 
 -- replace sub-expressions that are in store with their hashes
-smush :: Store -> Expression Word -> Expression Word
+smush :: Store -> Expression Int -> Expression Int
 smush store = sm
   where
     lu expr = let h = Candid.Expression.hash expr
                in maybe expr (const $ Hash (nameOf expr) h) $ HM.lookup h store
-    sm :: Expression Word -> Expression Word
+    sm :: Expression Int -> Expression Int
     sm (Pi n bn iT oT) = lu $ Pi n bn (sm iT) (sm oT)
     sm (Lambda n bn iT b) = lu $ Lambda n bn (sm iT) (sm b)
     sm (Apply n f a) = lu $ Apply n (sm f) (sm a)
@@ -51,10 +54,10 @@ smush store = sm
     sm expr = expr
 
 -- replace hashes that are in store with their content
-expand :: Store -> Expression Word -> Expression Word
+expand :: Store -> Expression Int -> Expression Int
 expand store = ex
   where
-    ex :: Expression Word -> Expression Word
+    ex :: Expression Int -> Expression Int
     ex (Pi n bn iT oT) = Pi n bn (ex iT) (ex oT)
     ex (Lambda n bn iT b) = Lambda n bn (ex iT) (ex b)
     ex (Apply n f a) = Apply n (ex f) (ex a)

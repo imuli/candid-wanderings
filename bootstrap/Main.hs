@@ -5,6 +5,7 @@ import System.Environment
 import Candid.Expression
 import Candid.Store
 import Candid.Parse
+import Candid.Typecheck
 
 import Data.Maybe (catMaybes)
 
@@ -17,5 +18,6 @@ main = do
    in case fmap catMaybes parsed of
       Left error -> putStrLn $ show error
       Right exprs -> 
-        let st = numberInto empty exprs
-         in putStrLn $ unlines $ map (show . expr) $ byName st nm
+        case numberInto empty exprs of
+             Left error -> putStrLn $ show error
+             Right st -> putStrLn $ unlines $ map show $ byName st nm
