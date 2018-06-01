@@ -1,4 +1,5 @@
 {-#OPTIONS_GHC -Wall #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Candid.Expression
   ( Expression(..)
@@ -13,9 +14,11 @@ module Candid.Expression
   , replace
   , reduce
   , equiv
+  , pretty
   ) where
 
 import qualified Blake2s1 as H
+import Data.Maybe (listToMaybe)
 
 data Expression t
   = Star
@@ -30,6 +33,40 @@ data Expression t
   deriving (Show)
 
 type Context t = [Expression t]
+
+showName :: String -> String -> String
+showName "" _ = ""
+showName name sep = name ++ sep
+
+parenLevel :: Expression a -> Int
+parenLevel Star = 10
+parenLevel (Hole _) = 10
+parenLevel (Ref _) = 10
+parenLevel (Rec _) = 10
+parenLevel (Pi _ _ _ _) = 5
+parenLevel (Lambda _ _ _ _) = 5
+parenLevel (Apply _ _ _) = 9
+parenLevel (Assert _ _ _) = 5
+parenLevel (Hash _ _) = 10
+
+paren :: Bool -> String -> String
+paren True s = "(" ++ s ++ ")"
+paren False s = s
+
+pretty :: Integral a => Show a => Context a -> Expression a -> String
+pretty ctx = pretty' 0
+  where
+    pretty' level x = paren (level >= parenLevel x) $
+      case x of
+           Star -> "*"
+           Hole s -> '?':s
+           Ref n -> maybe ('!':show n) boundNameOf $ listToMaybe $ drop (fromIntegral n) ctx
+           Rec n -> maybe ('@':show n) nameOf $ listToMaybe $ drop (fromIntegral n) ctx
+           Pi name boundName inType outType -> showName name " = " ++ showName boundName ":" ++ pretty' 5 inType ++ " → " ++ pretty (x:ctx) outType
+           Lambda name boundName inType body -> showName name " = " ++ showName boundName ":" ++ pretty' 5 inType ++ " ⇒ " ++ pretty (x:ctx) body
+           Apply name function argument -> showName name " = " ++ pretty' 5 function ++ " " ++ pretty' 9 argument
+           Assert name outType body -> showName name " = " ++ pretty' 5 outType ++ " ~\n\t" ++ pretty' 0 body
+           Hash name _ -> name
 
 hash :: Integral a => Expression a -> H.Hash
 hash Star = H.hash H.zero H.zero (-1,0,0,1)

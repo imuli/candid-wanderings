@@ -1,6 +1,7 @@
 module Candid.Typecheck
   ( TypeError(..)
   , typecheck
+  , prettyError
   ) where
 
 import Data.Maybe (listToMaybe)
@@ -13,6 +14,19 @@ data TypeError
   | OpenExpression (Context Int) (Expression Int)
   | TypeInference (Context Int) (Expression Int)
   deriving (Show)
+
+
+prettyError :: TypeError -> String
+prettyError err =
+  case err of
+       TypeMismatch ctx expr expected actual -> "Type mismatch" ++ ctxMsg ctx ++ " at " ++ pretty ctx expr ++ "\n\tExpected type: " ++ pretty ctx expected ++ "\n\tActual type: " ++ pretty ctx actual
+       HasHole ctx expr -> "Hole " ++ pretty ctx expr ++ ctxMsg ctx
+       OpenExpression ctx expr -> "Open Expression " ++ pretty ctx expr ++ ctxMsg ctx
+       TypeInference ctx expr -> "Type Inference with " ++ pretty ctx expr ++ ctxMsg ctx
+ where
+   ctxMsg :: Context Int -> String
+   ctxMsg [] = ""
+   ctxMsg (x:xs) = " in expression `" ++ pretty xs x ++ "`"
 
 index :: Int -> [a] -> Maybe a
 index i = listToMaybe . drop i
@@ -49,7 +63,7 @@ typecheck hashExpr hashType holeOk = tc
            (_, Apply _ func arg) ->
              tc trust ctx func >>= \funcType -> tc trust ctx arg >>= \argType ->
                case funcType of
-                    Pi _ _ inType outType -> 
+                    Pi _ _ inType outType ->
                       if equiv hashExpr ctx inType ctx argType
                          then Right (replace arg funcType outType)
                          else Left (TypeMismatch ctx arg inType argType)

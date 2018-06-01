@@ -1,5 +1,6 @@
 module Candid.Store
   ( Entry(..)
+  , prettyEntry
   , Store(..)
   , empty
   , byName
@@ -19,6 +20,9 @@ data Entry = Entry { name :: String
                    , expr :: Expression Int
                    , hash :: H.Hash
                    } deriving (Show)
+
+prettyEntry :: Entry -> String
+prettyEntry entry = "Name: " ++ name entry ++ "\nType: " ++ pretty [] (kind entry) ++ "\nExpression: " ++ pretty [] (expr entry) ++ "\nHash: " ++ H.toHex (Candid.Store.hash entry)
 
 type Store = HM.HashMap H.Hash Entry
 

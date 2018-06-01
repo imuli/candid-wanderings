@@ -19,5 +19,5 @@ main = do
       Left error -> putStrLn $ show error
       Right exprs -> 
         case numberInto empty exprs of
-             Left error -> putStrLn $ show error
-             Right st -> putStrLn $ unlines $ map show $ byName st nm
+             Left (name, error) -> putStrLn $ "Error in " ++ name ++ "\n" ++ prettyError error
+             Right st -> putStrLn $ unlines $ map prettyEntry $ byName st nm
