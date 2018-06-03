@@ -16,8 +16,8 @@ main = do
   let nm = head (tail args)
       parsed = parseText input
    in case fmap catMaybes parsed of
-      Left error -> putStrLn $ show error
+      Left err -> putStrLn $ show err
       Right exprs -> 
         case numberInto empty exprs of
-             Left (name, error) -> putStrLn $ "Error in " ++ name ++ "\n" ++ prettyError error
+             Left (at, err) -> putStrLn $ "Error in " ++ at ++ "\n" ++ prettyError err
              Right st -> putStrLn $ unlines $ map prettyEntry $ byName st nm

@@ -15,6 +15,7 @@ module Candid.Expression
   , reduce
   , equiv
   , pretty
+  , applicate
   ) where
 
 import qualified Blake2s1 as H
@@ -126,8 +127,8 @@ shift :: Integral t => (t -> t) -> Expression t -> Expression t
 shift adj = recurseContext Star shift' []
   where
     shift' ctx expr left right = case expr of
-                                      Ref n -> Ref $ if length ctx >= fromIntegral n then adj n else n
-                                      Rec n -> Rec $ if length ctx >= fromIntegral n then adj n else n
+                                      Ref n -> Ref $ if length ctx <= fromIntegral n then adj n else n
+                                      Rec n -> Rec $ if length ctx <= fromIntegral n then adj n else n
                                       Pi nm bnm _ _ -> Pi nm bnm left right
                                       Lambda nm bnm _ _ -> Lambda nm bnm left right
                                       Assert nm _ _ -> Assert nm left right
@@ -135,7 +136,7 @@ shift adj = recurseContext Star shift' []
                                       _ -> expr
 
 replace :: Integral t => Expression t -> Expression t -> Expression t -> Expression t
-replace ref rec = shift (1 -) . recurseContext Star replace' []
+replace ref rec = shift (-1 +) . recurseContext Star replace' []
   where
     replace' ctx expr left right = case expr of
                                         Ref n -> if depth == n
@@ -165,6 +166,16 @@ reduce = recurseContext Star reduce' []
                                                           _ -> Apply nm left right
                                      _ -> expr
 
+applicate :: (H.Hash -> Maybe (Expression Int)) -> Expression Int -> Expression Int
+applicate hashExpr x =
+  case x of
+       Apply nm function argument ->
+         case applicate hashExpr function of
+              Lambda _ _ _ body -> replace argument function body
+              y -> Apply nm y argument
+       Hash _ h -> maybe x id $ hashExpr h
+       _ -> x
+
 -- are the two expressions equivalent, given their contexts
 equiv :: (H.Hash -> Maybe (Expression Int)) -> Context Int -> Expression Int -> Context Int -> Expression Int -> Bool
 equiv hashExpr = eq
@@ -188,13 +199,13 @@ equiv hashExpr = eq
            -- cases that don't match right off
            (Rec n, _) -> case drop n cx of [] -> False; (x':cx') -> eq cx' x' cy y
            (_, Rec n) -> case drop n cy of [] -> False; (y':cy') -> eq cx x cy' y'
-           (Apply _ _ _, _) -> eq cx (reduce x) cy y
-           (_, Apply _ _ _) -> eq cx x cy (reduce y)
            (Hash _ h, _) -> case hashExpr h of
                                  Nothing -> h == hash y
                                  Just x' -> eq cx x' cy y
            (_, Hash _ h) -> case hashExpr h of
                                  Nothing -> h == hash x
                                  Just y' -> eq cx x cy y'
+           (Apply _ _ _, _) -> eq cx (applicate hashExpr x) cy y
+           (_, Apply _ _ _) -> eq cx x cy (applicate hashExpr y)
            (_, _) -> False
 
