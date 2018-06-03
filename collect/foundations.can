@@ -61,7 +61,7 @@ ordOrdering = Ord Ordering ~
 
 eqOrd = t:* ⇒ ordT:Ord t ⇒ Eq t ~
 	x:t ⇒ y:t ⇒ Unit ⇒ Boolean ~
-	(ordT x y) Boolean False True False
+	(ordT x y id) Boolean False True False
 
 Map = u:(*→*) ⇒ t:* → s:* → f:(t→s) → a:u t → Unit → u s
 Replace = u:(*→*) ⇒ t:* → s:* → b:s → a:u t → Unit → u s
@@ -77,18 +77,18 @@ Nothing = t:* ⇒ r:* ⇒ nothing:r ⇒ just:(a:t→r) ⇒ r ~
 Just = t:* ⇒ a:t ⇒ r:* ⇒ nothing:r ⇒ just:(a:t→r) ⇒ r ~
 	just a
 
-fromMaybe = t:* ⇒ nothing:t ⇒ may:Maybe t ⇒ t
+fromMaybe = t:* ⇒ nothing:t ⇒ may:Maybe t ⇒ t ~
 	may t nothing (a:t ⇒ a)
 
 ordMaybe = t:* ⇒ ord:Ord t ⇒ Ord (Maybe t) ~
 	x:Maybe t ⇒ y:Maybe t ⇒ Unit ⇒ Ordering ~
-	x Ordering (y Ordering EQ (t ⇒ LT)) (x':t ⇒ y Boolean GT (ord x'))
+	x Ordering (y Ordering EQ (t ⇒ LT)) (x':t ⇒ y Ordering GT (y':t ⇒ ord x' y' id))
 eqMaybe = t:* ⇒ eq:Eq t ⇒ Eq (Maybe t) ~
 	x:Maybe t ⇒ y:Maybe t ⇒ Unit ⇒ Boolean ~
-	x Boolean (y Boolean True (t ⇒ False)) (x':t ⇒ y Boolean False (eq x'))
+	x Boolean (y Boolean True (t ⇒ False)) (x':t ⇒ y Boolean False (y':t ⇒ eq x' y' id))
 mapMaybe = Map Maybe ~
-	t:* ⇒ s:* ⇒ f:(t→s) ⇒ a:Maybe t ⇒ Unit ⇒ Maybe s ~
-	a (Maybe s) (Nothing s) (Just s (f a))
+	t:* ⇒ s:* ⇒ f:(t→s) ⇒ ma:Maybe t ⇒ Unit ⇒ Maybe s ~
+	ma (Maybe s) (Nothing s) (a:t ⇒ Just s (f a))
 
 Pair = t:* ⇒ s:* ⇒ r:* → p:(t→s→r) → r
 P = t:* ⇒ s:* ⇒ a:t ⇒ b:s ⇒ r:* ⇒ p:(t→s→r) ⇒ r ~
@@ -99,25 +99,25 @@ fst = t:* ⇒ s:* ⇒ pair:Pair t s ⇒ t ~
 snd = t:* ⇒ s:* ⇒ pair:Pair t s ⇒ s ~
 	pair s (a:t ⇒ b:s ⇒ b)
 swap = t:* ⇒ s:* ⇒ pair:Pair t s ⇒ Pair s t ~
-	pair (Pair s t) (a:t ⇒ b:t ⇒ P s t b a)
+	pair (Pair s t) (a:t ⇒ b:s ⇒ P s t b a)
 
 eqPair = t:* ⇒ s: * ⇒ eqT:Eq t ⇒ eqS:Eq s ⇒ Eq (Pair t s) ~
-	x:Pair t s ⇒ y:Pair t s ⇒ Boolean ~
-	x Boolean (xa:t ⇒ xb:s ⇒ y Boolean (ya:t ⇒ yb:s ⇒ and (eqT xa ya) (eqS xa ya)))
+	x:Pair t s ⇒ y:Pair t s ⇒ Unit ⇒ Boolean ~
+	x Boolean (xa:t ⇒ xb:s ⇒ y Boolean (ya:t ⇒ yb:s ⇒ and (eqT xa ya id) (eqS xb yb id)))
 ordPair = t:* ⇒ s: * ⇒ ordT:Ord t ⇒ ordS:Ord s ⇒ Ord (Pair t s) ~
-	x:Pair t s ⇒ y:Pair t s ⇒ Ordering ~
-	x Ordering (xa:t ⇒ xb:s ⇒ y Ordering (ya:t ⇒ yb:s ⇒ chainOrder (ordT xa ya) (ordS xa ya)))
+	x:Pair t s ⇒ y:Pair t s ⇒ Unit ⇒ Ordering ~
+	x Ordering (xa:t ⇒ xb:s ⇒ y Ordering (ya:t ⇒ yb:s ⇒ chainOrder (ordT xa ya id) (ordS xb yb id)))
 
 Either = t:* ⇒ s:* ⇒ r:* → left:(a:t→r) → right:(b:s→r) → r
 Left = t:* ⇒ s:* ⇒ a:t ⇒ r:* ⇒ left:(a:t→r) ⇒ right:(b:s→r) ⇒ r ~
 	left a
 Right = t:* ⇒ s:* ⇒ b:s ⇒ r:* ⇒ left:(a:t→r) ⇒ right:(b:s→r) ⇒ r ~
-	Right b
+	right b
 
 eqEither = t:* ⇒ s:* ⇒ eqT:Eq t ⇒ eqS:Eq s ⇒ Eq (Either t s) ~
-	x:Either t s ⇒ y:Either t s ⇒ Boolean ~
-	x Boolean (xa:t ⇒ y Boolean (ya:t ⇒ eqT xa ya) (yb:s ⇒ False))
-	          (xb:s ⇒ y Boolean (ya:t ⇒ False) (yb:s ⇒ eqS xb yb))
+	x:Either t s ⇒ y:Either t s ⇒ Unit ⇒ Boolean ~
+	x Boolean (xa:t ⇒ y Boolean (ya:t ⇒ eqT xa ya id) (yb:s ⇒ False))
+	          (xb:s ⇒ y Boolean (ya:t ⇒ False) (yb:s ⇒ eqS xb yb id))
 mapLeft = s:* ⇒ Map (t:* ⇒ Either t s) ~
 	t:* ⇒ r:* ⇒ f:(t→r) ⇒ a:Either t s ⇒ Unit ⇒ Either r s ~
 	a (Either r s) (at:t ⇒ Left r s (f at)) (bs:s ⇒ Right r s bs)
@@ -132,7 +132,7 @@ S = p:Nat ⇒ r:* ⇒ z:r ⇒ s:(p:r→r) ⇒ r ~
 	s (p r z s)
 
 precNat = x:Nat ⇒ Maybe Nat ~
-	x (Maybe Nat) (Nothing Nat) (m:Maybe Nat ⇒ m (Maybe Nat) (Just Z) (n:Nat ⇒ Just (S n)))
+	x (Maybe Nat) (Nothing Nat) (m:Maybe Nat ⇒ m (Maybe Nat) (Just Nat Z) (n:Nat ⇒ Just Nat (S n)))
 precNatZ = x:Nat ⇒ Nat ~
 	(precNat x) Nat Z (id Nat)
 addNat = x:Nat ⇒ y:Nat ⇒ Nat ~
@@ -147,7 +147,7 @@ Succ = n:Natural ⇒ r:* ⇒ zero:r ⇒ succ:(n:Natural→r) ⇒ succ n
 precNatural = n:Natural ⇒ Maybe Natural ~
 	n (Maybe Natural) (Nothing Natural) (Just Natural)
 precNaturalZ = x:Natural ⇒ Natural ~
-	x Natural Z (id Natural)
+	x Natural Zero (id Natural)
 addNatural = n:Natural ⇒ m:Natural ⇒ Natural ~
 	m Natural n (addNatural (Succ n))
 mulNatural = n:Natural ⇒ m:Natural ⇒ Natural ~
@@ -157,11 +157,11 @@ evenNatural = n:Natural ⇒ Boolean ~
 
 eqNatural = Eq Natural ~
 	x:Natural ⇒ y:Natural ⇒ Unit ⇒ Boolean ~
-	x Natural (y Boolean True (Natural ⇒ False))
+	x Boolean (y Boolean True (Natural ⇒ False))
             (x':Natural ⇒ y Boolean False (y':Natural ⇒ eqNatural x' y' id))
 ordNatural = Ord Natural ~
 	x:Natural ⇒ y:Natural ⇒ Unit ⇒ Ordering ~
-	x Natural (y Ordering EQ (Natural ⇒ LT))
+	x Ordering (y Ordering EQ (Natural ⇒ LT))
             (x':Natural ⇒ y Ordering GT (y':Natural ⇒ ordNatural x' y' id))
 
 Crumb = Pair Boolean Boolean
@@ -217,8 +217,8 @@ addWord = addBits Byte addByte
 
 addQuad = addBits Word addWord
 
-addModWord = x:Word → y:Word → Word ~
-	snd Boolean Word (addWord x y)
+addModWord = x:Word ⇒ y:Word ⇒ Word ~
+	snd Boolean Word (addWord x y False)
 
 List = t:* ⇒ r:* → nil:r → cons:(x:t → xs:List t → r) → r
 Nil = t:* ⇒ r:* ⇒ nil:r ⇒ cons:(x:t → xs:List t → r) ⇒ r ~
@@ -227,26 +227,24 @@ Cons = t:* ⇒ x:t ⇒ xs:List t ⇒ r:* ⇒ nil:r ⇒ cons:(x:t → xs:List t �
 	cons x xs
 
 concat = t:* ⇒ xs:List t ⇒ ys:List t ⇒ List t ~
-	xs (List t) ys (x': t ⇒ xs':List t ⇒ Cons t x' (concat xs' ys))
+	xs (List t) ys (x': t ⇒ xs':List t ⇒ Cons t x' (concat t xs' ys))
 length = t:* ⇒ xs:List t ⇒ Natural ~
 	xs Natural Zero (t ⇒ xs':List t ⇒ Succ (length t xs'))
 index = t:* ⇒ xs:List t ⇒ n:Natural ⇒ Maybe t ~
-	xs (Maybe t) (Nothing t) (x:t ⇒ xs':List t ⇒ n (Maybe t) (Just t x) (index xs'))
-indexOf = t:* ⇒ eqT:Eq t ⇒ x:t ⇒ indexOf' = xs:List t ⇒ Maybe Natural
-  xs (Maybe Natural) (Nothing Natural)
-     (x':t ⇒ xs':List t ⇒ (eqT x x' id) (Maybe Natural) (Just Natural Zero) (mapMaybe Natural Natural Succ (indexOf' xs')))
-indexWhere = t:* ⇒ pred:(x:t→Boolean) ⇒ indexWhere' = xs:List t ⇒ Maybe Natural
-  xs (Maybe Natural) (Nothing Natural)
-     (x':t ⇒ xs':List t ⇒ (pred x') (Maybe Natural) (Just Natural Zero) (mapMaybe Natural Natural Succ (indexWhere' xs')))
+	xs (Maybe t) (Nothing t) (x:t ⇒ xs':List t ⇒ n (Maybe t) (Just t x) (index t xs'))
+indexWhere = t:* ⇒ pred:(x:t → Boolean) ⇒ xs:List t ⇒ Maybe Natural ~
+	xs (Maybe Natural) (Nothing Natural) (x':t ⇒ xs':List t ⇒ (pred x') (Maybe Natural) (Just Natural Zero) (mapMaybe Natural Natural Succ (indexWhere t pred xs') id))
+indexOf = t:* ⇒ eqT:Eq t ⇒ x:t ⇒ xs:List t ⇒ Maybe Natural ~
+  indexWhere t (y:t ⇒ eqT x y id) xs
 
 eqList = t:* ⇒ eqT:Eq t ⇒ Eq (List t) ~
-	eq' = xs:List t ⇒ ys:List t ⇒ Unit ⇒ Boolean ~
+  xs:List t ⇒ ys:List t ⇒ Unit ⇒ Boolean ~
 	xs Boolean (ys Boolean True (t ⇒ List t ⇒ False))
-	           (x':t ⇒ xs':t ⇒ ys Boolean False (y':t ⇒ ys':t ⇒ and (eqT x' y') (eq' xs' ys' id)))
+	(x':t ⇒ xs':List t ⇒ ys Boolean False (y':t ⇒ ys':List t ⇒ and (eqT x' y' id) (eqList t eqT xs' ys' id)))
 ordList = t:* ⇒ ordT:Ord t ⇒ Ord (List t) ~
-	ord' = xs:List t ⇒ ys:List t ⇒ Unit ⇒ Boolean ~
+	xs:List t ⇒ ys:List t ⇒ Unit ⇒ Ordering ~
 	xs Ordering (ys Ordering EQ (t ⇒ List t ⇒ LT))
-	            (x':t ⇒ xs':t ⇒ ys Ordering GT (y':t ⇒ ys':t ⇒ chainOrder (ordT x' y') (ord' xs' ys' id)))
+	            (x':t ⇒ xs':List t ⇒ ys Ordering GT (y':t ⇒ ys':List t ⇒ chainOrder (ordT x' y' id) (ordList t ordT xs' ys' id)))
 mapList = Map List ~
 	t:* ⇒ s:* ⇒ f:(a:t→s) ⇒ xs:List t ⇒ Unit ⇒ List s ~
 	xs (List s) (Nil s) (x:t ⇒ xs':List t ⇒ Cons s (f x) (mapList t s f xs' id))
@@ -444,20 +442,20 @@ foldExpressionContext = r:* ⇒
 
 shift = push:(Natural→Natural) ⇒ (Expression → Expression) ~
 	foldExpressionContext Expression (Context⇒Star) (Context⇒Hole)
-	(ctx:Context ⇒ n:Natural ⇒ Ref ((ordNatural (length ctx) n) Natural n n (push n)))
-	(ctx:Context ⇒ n:Natural ⇒ Rec ((ordNatural (length ctx) n) Natural n n (push n)))
+	(ctx:Context ⇒ n:Natural ⇒ Ref ((ordNatural (length Expression ctx) n id) Natural n n (push n)))
+	(ctx:Context ⇒ n:Natural ⇒ Rec ((ordNatural (length Expression ctx) n id) Natural n n (push n)))
 	(Context⇒Hash) (Context⇒Forall) (Context⇒Lambda) (Context⇒Apply) (Context⇒Type) NilContext
 
 replace = ref:Expression ⇒ rec:Expression ⇒ expr:Expression ⇒ Expression ~
 	shift precNaturalZ (foldExpressionContext Expression (Context⇒Star) (Context⇒Hole)
-	(ctx:Context ⇒ n:Natural ⇒ (eqNatural (length ctx) n) Expression (shift (addNatural (Succ (length ctx))) ref) (Ref n))
-	(ctx:Context ⇒ n:Natural ⇒ (eqNatural (length ctx) n) Expression (shift (addNatural (Succ (length ctx))) rec) (Rec n))
+	(ctx:Context ⇒ n:Natural ⇒ (eqNatural (length Expression ctx) n id) Expression (shift (addNatural (Succ (length Expression ctx))) ref) (Ref n))
+	(ctx:Context ⇒ n:Natural ⇒ (eqNatural (length Expression ctx) n id) Expression (shift (addNatural (Succ (length Expression ctx))) rec) (Rec n))
 	(Context⇒Hash) (Context⇒Forall) (Context⇒Lambda) (Context⇒Apply) (Context⇒Type) NilContext expr)
 
 reduce = expr:Expression ⇒ Expression ~
 	foldExpressionContext Expression (Context⇒Star) (Context⇒Hole) (Context⇒Ref) (Context⇒Rec) (Context⇒Hash) (Context⇒Forall) (Context⇒Lambda)
 	(Context ⇒ function:Expression ⇒ argument:Expression ⇒ name:String ⇒ (repl:Expression ⇒ function Expression repl repl (Natural⇒repl) (Natural⇒repl) (List Word⇒String⇒repl) (Expression⇒Expression⇒String⇒String⇒repl)
-		(Expression ⇒ body:Expression ⇒ String ⇒ String ⇒ reduce (replace argument function body))
+		(Expression ⇒ body:Expression ⇒ String ⇒ String ⇒ reduce (replace argument function body)))
 		(Expression ⇒ Expression ⇒ String ⇒ repl) (Expression ⇒ Expression ⇒ String ⇒ repl)) (Apply function argument name)
 	)
 	(Context⇒Type)
