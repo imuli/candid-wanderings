@@ -452,11 +452,25 @@ replace = ref:Expression ⇒ rec:Expression ⇒ expr:Expression ⇒ Expression ~
 	(ctx:Context ⇒ n:Natural ⇒ (eqNatural (length Expression ctx) n id) Expression (shift (addNatural (Succ (length Expression ctx))) rec) (Rec n))
 	(Context⇒Hash) (Context⇒Forall) (Context⇒Lambda) (Context⇒Apply) (Context⇒Type) NilContext expr)
 
+applicate = hashExpr:(List Quad → Maybe Expression) ⇒ expr:Expression ⇒ Expression ~
+  expr Expression Star Hole Ref Rec
+	  (hash:List Quad ⇒ name:String ⇒ hashExpr hash Expression (Hash hash name) (id Expression))
+    Forall Lambda
+    (function:Expression ⇒ argument:Expression ⇒ name:String ⇒ (func':Expression ⇒ (repl:Expression ⇒ func' Expression
+      repl repl (Natural ⇒ repl) (Natural ⇒ repl) (List Quad ⇒ String ⇒ repl) (Expression ⇒ Expression ⇒ String ⇒ String ⇒ repl)
+			(Expression ⇒ body:Expression ⇒ String ⇒ String ⇒ replace argument func' body)
+			(Expression ⇒ Expression ⇒ String ⇒ repl)
+			(Expression ⇒ Expression ⇒ String ⇒ repl)
+			) (Apply func' argument name)) (applicate hashExpr function))
+		Type
+
 reduce = expr:Expression ⇒ Expression ~
 	foldExpressionContext Expression (Context⇒Star) (Context⇒Hole) (Context⇒Ref) (Context⇒Rec) (Context⇒Hash) (Context⇒Forall) (Context⇒Lambda)
-	(Context ⇒ function:Expression ⇒ argument:Expression ⇒ name:String ⇒ (repl:Expression ⇒ function Expression repl repl (Natural⇒repl) (Natural⇒repl) (List Word⇒String⇒repl) (Expression⇒Expression⇒String⇒String⇒repl)
-		(Expression ⇒ body:Expression ⇒ String ⇒ String ⇒ reduce (replace argument function body)))
-		(Expression ⇒ Expression ⇒ String ⇒ repl) (Expression ⇒ Expression ⇒ String ⇒ repl)) (Apply function argument name)
+	(Context ⇒ function:Expression ⇒ argument:Expression ⇒ name:String ⇒
+	  (repl:Expression ⇒ function Expression repl repl (Natural⇒repl) (Natural⇒repl) (List Quad⇒String⇒repl) (Expression⇒Expression⇒String⇒String⇒repl)
+		  (Expression ⇒ body:Expression ⇒ String ⇒ String ⇒ reduce (replace argument function body))
+		  (Expression ⇒ Expression ⇒ String ⇒ repl) (Expression ⇒ Expression ⇒ String ⇒ repl)
+		) (Apply function argument name)
 	)
-	(Context⇒Type)
+	(Context⇒Type) NilContext expr
 
