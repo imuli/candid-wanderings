@@ -171,7 +171,7 @@ applicate hashExpr x =
   case x of
        Apply nm function argument ->
          case applicate hashExpr function of
-              Lambda _ _ _ body -> replace argument function body
+              Lambda nm bnm inType body -> replace argument (Lambda nm bnm inType body) body
               y -> Apply nm y argument
        Hash _ h -> maybe x id $ hashExpr h
        _ -> x
