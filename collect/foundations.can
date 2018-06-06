@@ -1,3 +1,5 @@
+Void = r:* → r
+
 Unit = r:* → a:r → r
 id = r:* ⇒ a:r ⇒ r ~
 	a
@@ -33,6 +35,11 @@ Eq = t:* ⇒ x:t → y:t → Unit → Boolean
 eqBoolean = Eq Boolean ~
 	x:Boolean ⇒ y:Boolean ⇒ Unit ⇒ Boolean ~
 	x Boolean y (not y)
+
+is = t:* ⇒ eqT:Eq t ⇒ x:t ⇒ y:t ⇒ * ~
+	eqT x y id * Unit Void
+isNot = t:* ⇒ eqT:Eq t ⇒ x:t ⇒ y:t ⇒ * ~
+	eqT x y id * Void Unit
 
 Ordering = r:* → lt:r → eq:r → gt:r → r
 LT = r:* ⇒ lt:r ⇒ eq:r ⇒ gt:r ⇒ r ~
