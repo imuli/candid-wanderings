@@ -171,9 +171,10 @@ applicate hashExpr x =
   case x of
        Apply nm function argument ->
          case applicate hashExpr function of
-              Lambda nm bnm inType body -> replace argument (Lambda nm bnm inType body) body
+              Lambda lnm bnm inType body -> applicate hashExpr $ replace argument (Lambda lnm bnm inType body) body
               y -> Apply nm y argument
        Hash _ h -> maybe x id $ hashExpr h
+       Assert _ _ body -> applicate hashExpr body
        _ -> x
 
 -- are the two expressions equivalent, given their contexts
