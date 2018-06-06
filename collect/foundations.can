@@ -70,6 +70,15 @@ eqOrd = t:* ⇒ ordT:Ord t ⇒ Eq t ~
 	x:t ⇒ y:t ⇒ Unit ⇒ Boolean ~
 	(ordT x y id) Boolean False True False
 
+≥ = t:* ⇒ ordT:Ord t ⇒ x:t ⇒ y:t ⇒ Boolean ~
+	ordT x y id Boolean False False True
+> = t:* ⇒ ordT:Ord t ⇒ x:t ⇒ y:t ⇒ Boolean ~
+	ordT x y id Boolean False False True
+< = t:* ⇒ ordT:Ord t ⇒ x:t ⇒ y:t ⇒ Boolean ~
+	ordT x y id Boolean True False False
+≤ = t:* ⇒ ordT:Ord t ⇒ x:t ⇒ y:t ⇒ Boolean ~
+	ordT x y id Boolean True False False
+
 Map = u:(*→*) ⇒ t:* → s:* → f:(t→s) → a:u t → Unit → u s
 Replace = u:(*→*) ⇒ t:* → s:* → b:s → a:u t → Unit → u s
 Filter = u:(*→*) ⇒ t:* → pred:(x:t→Boolean) → a:u t → Unit → u t
@@ -151,6 +160,16 @@ Natural = r:* → zero:r → succ:(n:Natural→r) → r
 Zero = r:* ⇒ zero:r ⇒ succ:(n:Natural→r) ⇒ zero
 Succ = n:Natural ⇒ r:* ⇒ zero:r ⇒ succ:(n:Natural→r) ⇒ succ n
 
+1 = Succ Zero
+2 = Succ 1
+3 = Succ 2
+4 = Succ 3
+5 = Succ 4
+6 = Succ 5
+7 = Succ 6
+8 = Succ 7
+9 = Succ 8
+
 precNatural = n:Natural ⇒ Maybe Natural ~
 	n (Maybe Natural) (Nothing Natural) (Just Natural)
 precNaturalZ = x:Natural ⇒ Natural ~
@@ -173,18 +192,44 @@ ordNatural = Ord Natural ~
 
 Crumb = Pair Boolean Boolean
 crumb = x:Boolean ⇒ y:Boolean ⇒ P Boolean Boolean x y
+0c = crumb False False
+1c = crumb False True
+2c = crumb True False
+3c = crumb True True
 
 Nybble = Pair Crumb Crumb
 nybble = x:Crumb ⇒ y:Crumb ⇒ P Crumb Crumb x y
+$0 = nybble 0c 0c
+$1 = nybble 0c 1c
+$2 = nybble 0c 2c
+$3 = nybble 0c 3c
+$4 = nybble 1c 0c
+$5 = nybble 1c 1c
+$6 = nybble 1c 2c
+$7 = nybble 1c 3c
+$8 = nybble 2c 0c
+$9 = nybble 2c 1c
+$a = nybble 2c 2c
+$b = nybble 2c 3c
+$c = nybble 3c 0c
+$d = nybble 3c 1c
+$e = nybble 3c 2c
+$f = nybble 3c 3c
 
 Byte = Pair Nybble Nybble
 byte = x:Nybble ⇒ y:Nybble ⇒ P Nybble Nybble x y
+0b = byte $0 $0
+1b = byte $0 $1
 
 Playte = Pair Byte Byte
 playte = x:Byte ⇒ y:Byte ⇒ P Byte Byte x y
+0p = playte 0b 0b
+1p = playte 0b 1b
 
 Dynner = Pair Playte Playte
 dynner = x:Playte ⇒ y:Playte ⇒ P Playte Playte x y
+0d = dynner 0p 0p
+1d = dynner 0p 1p
 
 addBoolean = x:Boolean ⇒ y:Boolean ⇒ z:Boolean ⇒ Pair Boolean Boolean ~
 	x (Pair Boolean Boolean)
@@ -227,6 +272,38 @@ addDynner = addBits Playte addPlayte
 addModPlayte = x:Playte ⇒ y:Playte ⇒ Playte ~
 	snd Boolean Playte (addPlayte x y False)
 
+orBits = t:* ⇒ orT:(x:t → y:t → t) ⇒ x:Pair t t ⇒ y:Pair t t ⇒ Pair t t ~
+	x (Pair t t) (xx:t ⇒ xy:t ⇒ y (Pair t t) (yx:t ⇒ yy:t ⇒ P t t (orT xx yx) (orT xy yy)))
+orCrumb = orBits Boolean or
+orNybble = orBits Crumb orCrumb
+orByte = orBits Nybble orNybble
+orPlayte = orBits Byte orByte
+orDynner = orBits Playte orPlayte
+
+xorBits = t:* ⇒ xorT:(x:t → y:t → t) ⇒ x:Pair t t ⇒ y:Pair t t ⇒ Pair t t ~
+	x (Pair t t) (xx:t ⇒ xy:t ⇒ y (Pair t t) (yx:t ⇒ yy:t ⇒ P t t (xorT xx yx) (xorT xy yy)))
+xorCrumb = xorBits Boolean xor
+xorNybble = xorBits Crumb xorCrumb
+xorByte = xorBits Nybble xorNybble
+xorPlayte = xorBits Byte xorByte
+xorDynner = xorBits Playte xorPlayte
+
+andBits = t:* ⇒ andT:(x:t → y:t → t) ⇒ x:Pair t t ⇒ y:Pair t t ⇒ Pair t t ~
+	x (Pair t t) (xx:t ⇒ xy:t ⇒ y (Pair t t) (yx:t ⇒ yy:t ⇒ P t t (andT xx yx) (andT xy yy)))
+andCrumb = andBits Boolean and
+andNybble = andBits Crumb andCrumb
+andByte = andBits Nybble andNybble
+andPlayte = andBits Byte andByte
+andDynner = andBits Playte andPlayte
+
+notBits = t:* ⇒ notT:(x:t → t) ⇒ x:Pair t t ⇒ Pair t t ~
+	x (Pair t t) (xx:t ⇒ xy:t ⇒ P t t (notT xx) (notT xy))
+notCrumb = notBits Boolean not
+notNybble = notBits Crumb notCrumb
+notByte = notBits Nybble notNybble
+notPlayte = notBits Byte notByte
+notDynner = notBits Playte notPlayte
+
 List = t:* ⇒ r:* → nil:r → cons:(x:t → xs:List t → r) → r
 Nil = t:* ⇒ r:* ⇒ nil:r ⇒ cons:(x:t → xs:List t → r) ⇒ r ~
 	nil
@@ -261,18 +338,61 @@ filterList = Filter List ~
 	   (x':t ⇒ xs':List t ⇒ (ys':List t ⇒ (pred x') (List t) ys' (Cons t x' ys'))
                           (filter' xs' id))
 
-String = List Dynner
-NilS = Nil Dynner
-ConsS = Cons Dynner
-concatS = concat Dynner
-charAt = index Dynner
+Char = Pair Byte Playte
+ZeroC = P Byte Playte 0b 0p
+char16 = a:Nybble ⇒ b:Nybble ⇒ c:Nybble ⇒ d:Nybble ⇒ Char ~
+	P Byte Playte 0b (playte (byte a b) (byte c d))
+char8 = a:Nybble ⇒ b:Nybble ⇒ Char ~
+	P Byte Playte 0b (playte 0b (byte a b))
+
+tabC = char8 $0 $9
+nlC = char8 $0 $a
+spaceC = char8 $2 $0
+parC = char8 $2 $8
+renC = char8 $2 $9
+asteriskC = char8 $2 $a
+bangC = char8 $3 $3
+colonC = char8 $3 $a
+equalC = char8 $3 $d
+queryC = char8 $3 $f
+atC = char8 $4 $0
+tildeC = char8 $7 $e
+leftArrowC = char16 $2 $1 $9 $2
+leftDoubleArrowC = char16 $2 $1 $d $2
+
+String = List Char
+NilS = Nil Char
+ConsS = Cons Char
+concatS = concat Char
+charAt = index Char
+idStr = str:String ⇒ str
+
+StringBuilder = str:String → String
+build = builder:StringBuilder ⇒ builder NilS
+chrSB = ch:Char ⇒ StringBuilder ~
+	str:String ⇒ ConsS ch str
+strSB = s:String ⇒ StringBuilder ~
+	str:String ⇒ concatS s str
+chrSB+ = ch:Char ⇒ builder:StringBuilder ⇒ StringBuilder ~
+	str:String ⇒ ConsS ch (builder str)
+strSB+ = s:String ⇒ builder:StringBuilder ⇒ StringBuilder ~
+	str:String ⇒ concatS s (builder str)
+sb+ = leftBuilder:StringBuilder ⇒ rightBuilder:StringBuilder ⇒ StringBuilder ~
+	str:String ⇒ leftBuilder (rightBuilder str)
+
+TreeHash = r:* → th:(a:Dynner → b:Dynner → c:Dynner → d:Dynner → e:Dynner → f:Dynner → g:Dynner → h:Dynner → r) → r
+TH = a:Dynner ⇒ b:Dynner ⇒ c:Dynner ⇒ d:Dynner ⇒ e:Dynner ⇒ f:Dynner ⇒ g:Dynner ⇒ h:Dynner ⇒ TreeHash ~
+	r:* ⇒ th:(a:Dynner → b:Dynner → c:Dynner → d:Dynner → e:Dynner → f:Dynner → g:Dynner → h:Dynner → r) ⇒ r ~
+	th a b c d e f g h
+
+zeroTH = TH 0d 0d 0d 0d 0d 0d 0d 0d
 
 Expression = r:* →
 	star:r →
-	hole:r →
+	hole:(hnm:String → r) →
 	ref:(n:Natural → r) →
 	rec:(n:Natural → r) →
-	hash:(hash:List Dynner → name:String → r) →
+	hash:(hash:TreeHash → name:String → r) →
 	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) →
 	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) →
 	apply:(function:Expression → argument:Expression → name:String → r) →
@@ -281,35 +401,35 @@ Expression = r:* →
 
 Star = r:* ⇒
 	star:r ⇒
-	hole:r ⇒
+	hole:(hnm:String → r) ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
-	hash:(hash:List Dynner → name:String → r) ⇒
+	hash:(hash:TreeHash → name:String → r) ⇒
 	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
 	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
 	type:(outType:Expression → body:Expression → name:String → r) ⇒
 	star
 
-Hole = r:* ⇒
+Hole = holeName:String ⇒ r:* ⇒
 	star:r ⇒
-	hole:r ⇒
+	hole:(hnm:String → r) ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
-	hash:(hash:List Dynner → name:String → r) ⇒
+	hash:(hash:TreeHash → name:String → r) ⇒
 	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
 	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
 	type:(outType:Expression → body:Expression → name:String → r) ⇒
-	hole
+	hole holeName
 
 Ref = n:Natural ⇒
 	r:* ⇒
 	star:r ⇒
-	hole:r ⇒
+	hole:(hnm:String → r) ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
-	hash:(hash:List Dynner → name:String → r) ⇒
+	hash:(hash:TreeHash → name:String → r) ⇒
 	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
 	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
@@ -319,24 +439,24 @@ Ref = n:Natural ⇒
 Rec = n:Natural ⇒
 	r:* ⇒
 	star:r ⇒
-	hole:r ⇒
+	hole:(hnm:String → r) ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
-	hash:(hash:List Dynner → name:String → r) ⇒
+	hash:(hash:TreeHash → name:String → r) ⇒
 	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
 	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
 	type:(outType:Expression → body:Expression → name:String → r) ⇒
 	rec n
 
-Hash = value:List Dynner ⇒
+Hash = value:TreeHash ⇒
 	name:String ⇒
 	r:* ⇒
 	star:r ⇒
-	hole:r ⇒
+	hole:(hnm:String → r) ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
-	hash:(hash:List Dynner → name:String → r) ⇒
+	hash:(hash:TreeHash → name:String → r) ⇒
 	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
 	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
@@ -349,10 +469,10 @@ Forall = inType:Expression ⇒
 	boundName:String ⇒
 	r:* ⇒
 	star:r ⇒
-	hole:r ⇒
+	hole:(hnm:String → r) ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
-	hash:(hash:List Dynner → name:String → r) ⇒
+	hash:(hash:TreeHash → name:String → r) ⇒
 	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
 	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
@@ -365,10 +485,10 @@ Lambda = inType:Expression ⇒
 	boundName:String ⇒
 	r:* ⇒
 	star:r ⇒
-	hole:r ⇒
+	hole:(hnm:String → r) ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
-	hash:(hash:List Dynner → name:String → r) ⇒
+	hash:(hash:TreeHash → name:String → r) ⇒
 	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
 	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
@@ -380,10 +500,10 @@ Apply = function:Expression ⇒
 	name:String ⇒
 	r:* ⇒
 	star:r ⇒
-	hole:r ⇒
+	hole:(hnm:String → r) ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
-	hash:(hash:List Dynner → name:String → r) ⇒
+	hash:(hash:TreeHash → name:String → r) ⇒
 	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
 	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
@@ -395,10 +515,10 @@ Type = outType:Expression ⇒
 	name:String ⇒
 	r:* ⇒
 	star:r ⇒
-	hole:r ⇒
+	hole:(hnm:String → r) ⇒
 	ref:(n:Natural → r) ⇒
 	rec:(n:Natural → r) ⇒
-	hash:(hash:List Dynner → name:String → r) ⇒
+	hash:(hash:TreeHash → name:String → r) ⇒
 	forall:(inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
 	lambda:(inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(function:Expression → argument:Expression → name:String → r) ⇒
@@ -411,10 +531,10 @@ ConsContext = Cons Expression
 
 foldExpressionContextExpression = r:* ⇒
 	star:(ctx:Context → r) ⇒
-	hole:(ctx:Context → r) ⇒
+	hole:(ctx:Context → hnm:String → r) ⇒
 	ref:(ctx:Context → n:Natural → r) ⇒
 	rec:(ctx:Context → n:Natural → r) ⇒
-	hash:(ctx:Context → hash:List Dynner → name:String → r) ⇒
+	hash:(ctx:Context → hash:TreeHash → name:String → r) ⇒
 	forall:(ctx:Context → inType':r → outType':r → inType:Expression → outType:Expression → name:String → boundName:String → r) ⇒
 	lambda:(ctx:Context → inType':r → body':r → inType:Expression → body:Expression → name:String → boundName:String → r) ⇒
 	apply:(ctx:Context → function':r → argument':r → function:Expression → argument:Expression → name:String → r) ⇒
@@ -430,10 +550,10 @@ foldExpressionContextExpression = r:* ⇒
 
 foldExpressionContext = r:* ⇒
 	star:(ctx:Context → r) ⇒
-	hole:(ctx:Context → r) ⇒
+	hole:(ctx:Context → hnm:String → r) ⇒
 	ref:(ctx:Context → n:Natural → r) ⇒
 	rec:(ctx:Context → n:Natural → r) ⇒
-	hash:(ctx:Context → hash:List Dynner → name:String → r) ⇒
+	hash:(ctx:Context → hash:TreeHash → name:String → r) ⇒
 	forall:(ctx:Context → inType':r → outType':r → name:String → boundName:String → r) ⇒
 	lambda:(ctx:Context → inType':r → body':r → name:String → boundName:String → r) ⇒
 	apply:(ctx:Context → function':r → argument':r → name:String → r) ⇒
@@ -459,25 +579,93 @@ replace = ref:Expression ⇒ rec:Expression ⇒ expr:Expression ⇒ Expression ~
 	(ctx:Context ⇒ n:Natural ⇒ (eqNatural (length Expression ctx) n id) Expression (shift (addNatural (Succ (length Expression ctx))) rec) (Rec n))
 	(Context⇒Hash) (Context⇒Forall) (Context⇒Lambda) (Context⇒Apply) (Context⇒Type) NilContext expr)
 
-applicate = hashExpr:(List Dynner → Maybe Expression) ⇒ expr:Expression ⇒ Expression ~
+applicate = hashExpr:(TreeHash → Maybe Expression) ⇒ expr:Expression ⇒ Expression ~
   expr Expression Star Hole Ref Rec
-	  (hash:List Dynner ⇒ name:String ⇒ hashExpr hash Expression (Hash hash name) (id Expression))
+	  (hash:TreeHash ⇒ name:String ⇒ hashExpr hash Expression (Hash hash name) (id Expression))
     Forall Lambda
     (function:Expression ⇒ argument:Expression ⇒ name:String ⇒ (func':Expression ⇒ (repl:Expression ⇒ func' Expression
-      repl repl (Natural ⇒ repl) (Natural ⇒ repl) (List Dynner ⇒ String ⇒ repl) (Expression ⇒ Expression ⇒ String ⇒ String ⇒ repl)
-			(Expression ⇒ body:Expression ⇒ String ⇒ String ⇒ replace argument func' body)
+      repl (String ⇒ repl) (Natural ⇒ repl) (Natural ⇒ repl) (TreeHash ⇒ String ⇒ repl) (Expression ⇒ Expression ⇒ String ⇒ String ⇒ repl)
+			(Expression ⇒ body:Expression ⇒ String ⇒ String ⇒ applicate hashExpr (replace argument func' body))
 			(Expression ⇒ Expression ⇒ String ⇒ repl)
 			(Expression ⇒ Expression ⇒ String ⇒ repl)
 			) (Apply func' argument name)) (applicate hashExpr function))
-		Type
+		(Expression ⇒ body:Expression ⇒ String ⇒ applicate hashExpr body)
 
 reduce = expr:Expression ⇒ Expression ~
 	foldExpressionContext Expression (Context⇒Star) (Context⇒Hole) (Context⇒Ref) (Context⇒Rec) (Context⇒Hash) (Context⇒Forall) (Context⇒Lambda)
 	(Context ⇒ function:Expression ⇒ argument:Expression ⇒ name:String ⇒
-	  (repl:Expression ⇒ function Expression repl repl (Natural⇒repl) (Natural⇒repl) (List Dynner⇒String⇒repl) (Expression⇒Expression⇒String⇒String⇒repl)
+	  (repl:Expression ⇒ function Expression repl (String⇒repl) (Natural⇒repl) (Natural⇒repl) (TreeHash⇒String⇒repl) (Expression⇒Expression⇒String⇒String⇒repl)
 		  (Expression ⇒ body:Expression ⇒ String ⇒ String ⇒ reduce (replace argument function body))
 		  (Expression ⇒ Expression ⇒ String ⇒ repl) (Expression ⇒ Expression ⇒ String ⇒ repl)
 		) (Apply function argument name)
 	)
 	(Context⇒Type) NilContext expr
 
+nameOf = expr:Expression ⇒ String ~
+	expr String
+		NilS
+		(String ⇒ NilS)
+		(Natural ⇒ NilS)
+		(Natural ⇒ NilS)
+		(TreeHash ⇒ nm:String ⇒ nm)
+	  (Expression ⇒ Expression ⇒ String ⇒ nm:String ⇒ nm)
+	  (Expression ⇒ Expression ⇒ String ⇒ nm:String ⇒ nm)
+	  (Expression ⇒ Expression ⇒ nm:String ⇒ nm)
+	  (Expression ⇒ Expression ⇒ nm:String ⇒ nm)
+
+boundNameOf = expr:Expression ⇒ String ~
+	expr String
+		NilS
+		(String ⇒ NilS)
+		(Natural ⇒ NilS)
+		(Natural ⇒ NilS)
+		(TreeHash ⇒ String ⇒ NilS)
+	  (Expression ⇒ Expression ⇒ bnm:String ⇒ String ⇒ bnm)
+	  (Expression ⇒ Expression ⇒ bnm:String ⇒ String ⇒ bnm)
+	  (Expression ⇒ Expression ⇒ String ⇒ NilS)
+	  (Expression ⇒ Expression ⇒ String ⇒ NilS)
+
+inTypeOf = expr:Expression ⇒ Expression ~
+	expr Expression
+		(Hole NilS)
+		(String ⇒ Hole NilS)
+		(Natural ⇒ Hole NilS)
+		(Natural ⇒ Hole NilS)
+		(TreeHash ⇒ String ⇒ Hole NilS)
+	  (inType:Expression ⇒ Expression ⇒ String ⇒ String ⇒ inType)
+	  (inType:Expression ⇒ Expression ⇒ String ⇒ String ⇒ inType)
+	  (Expression ⇒ Expression ⇒ String ⇒ Hole NilS)
+	  (Expression ⇒ Expression ⇒ String ⇒ Hole NilS)
+
+closed = (closed' = depth:Natural ⇒ expr:Expression ⇒ Boolean ~ expr Boolean
+		True
+		(String ⇒ False)
+		(n:Natural ⇒ > Natural ordNatural depth n)
+		(n:Natural ⇒ > Natural ordNatural depth n)
+		(TreeHash ⇒ String ⇒ True)
+	  (inType:Expression ⇒ outType:Expression ⇒ String ⇒ String ⇒ and (closed' depth inType) (closed' (Succ depth) outType))
+	  (inType:Expression ⇒ body:Expression ⇒ String ⇒ String ⇒ and (closed' depth inType) (closed' (Succ depth) body))
+	  (function:Expression ⇒ argument:Expression ⇒ String ⇒ and (closed' depth function) (closed' depth argument))
+	  (outType:Expression ⇒ body:Expression ⇒ String ⇒ and (closed' depth outType) (closed' depth body))
+	) Zero
+
+showNameSep = sep:String ⇒ name:String ⇒ String ~
+	name String NilS (Char ⇒ String ⇒ concatS name sep)
+
+showName = showNameSep (ConsS spaceC (ConsS equalC (ConsS spaceC NilS)))
+showBoundName = showNameSep (ConsS spaceC (ConsS colonC (ConsS spaceC NilS)))
+showNames = name:String ⇒ boundName:String ⇒ concatS (showName name) (showBoundName boundName)
+
+parenLevel = expr:Expression ⇒ expr Natural
+	9
+	(String ⇒ 9)
+	(Natural ⇒ 9)
+	(Natural ⇒ 9)
+	(TreeHash ⇒ String ⇒ 9)
+	(Expression ⇒ Expression ⇒ String ⇒ String ⇒ 5)
+	(Expression ⇒ Expression ⇒ String ⇒ String ⇒ 5)
+	(Expression ⇒ Expression ⇒ String ⇒ 8)
+	(Expression ⇒ Expression ⇒ String ⇒ 5)
+
+paren = if:Boolean ⇒ str:String ⇒ StringBuilder ~
+	if StringBuilder (chrSB+ parC (strSB+ str (chrSB renC))) (id String)
