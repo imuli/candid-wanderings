@@ -137,8 +137,13 @@ fromHex = fromList . map byteSwap . map hexRead . chop 8
 instance Show Hash where
   showsPrec _ h = (toHex h ++)
 
+instance Read Hash where
+  readsPrec _ str = case fromHex $ take 64 str of
+                         Nothing -> []
+                         Just h -> [(h, drop 64 str)]
+
 instance Ord Hash where
   compare x y = compare (toList x) (toList y)
 
 instance Hashable.Hashable Hash where
-  hashWithSalt salt (H a b c d e f g h) = (fromIntegral a) + salt
+  hashWithSalt salt (H a _ _ _ _ _ _ _) = (fromIntegral a) + salt
