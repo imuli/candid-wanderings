@@ -71,13 +71,13 @@ eqOrd = t:* ⇒ ordT:Ord t ⇒ Eq t ~
 	(ordT x y id) Boolean False True False
 
 ≥ = t:* ⇒ ordT:Ord t ⇒ x:t ⇒ y:t ⇒ Boolean ~
-	ordT x y id Boolean False False True
+	ordT x y id Boolean False True True
 > = t:* ⇒ ordT:Ord t ⇒ x:t ⇒ y:t ⇒ Boolean ~
 	ordT x y id Boolean False False True
 < = t:* ⇒ ordT:Ord t ⇒ x:t ⇒ y:t ⇒ Boolean ~
 	ordT x y id Boolean True False False
 ≤ = t:* ⇒ ordT:Ord t ⇒ x:t ⇒ y:t ⇒ Boolean ~
-	ordT x y id Boolean True False False
+	ordT x y id Boolean True True False
 
 Map = u:(*→*) ⇒ t:* → s:* → f:(t→s) → a:u t → Unit → u s
 Replace = u:(*→*) ⇒ t:* → s:* → b:s → a:u t → Unit → u s
@@ -649,12 +649,12 @@ closed = (closed' = depth:Natural ⇒ expr:Expression ⇒ Boolean ~ expr Boolean
 	  (outType:Expression ⇒ body:Expression ⇒ String ⇒ and (closed' depth outType) (closed' depth body))
 	) Zero
 
-showNameSep = sep:String ⇒ name:String ⇒ String ~
-	name String NilS (Char ⇒ String ⇒ concatS name sep)
+showNameSep = sep:String ⇒ name:String ⇒ StringBuilder ~
+	name StringBuilder idStr (Char ⇒ String ⇒ strSB+ name (strSB sep))
 
 showName = showNameSep (ConsS spaceC (ConsS equalC (ConsS spaceC NilS)))
 showBoundName = showNameSep (ConsS spaceC (ConsS colonC (ConsS spaceC NilS)))
-showNames = name:String ⇒ boundName:String ⇒ concatS (showName name) (showBoundName boundName)
+showNames = name:String ⇒ boundName:String ⇒ sb+ (showName name) (showBoundName boundName)
 
 parenLevel = expr:Expression ⇒ expr Natural
 	9
@@ -667,5 +667,18 @@ parenLevel = expr:Expression ⇒ expr Natural
 	(Expression ⇒ Expression ⇒ String ⇒ 8)
 	(Expression ⇒ Expression ⇒ String ⇒ 5)
 
-paren = if:Boolean ⇒ str:String ⇒ StringBuilder ~
-	if StringBuilder (chrSB+ parC (strSB+ str (chrSB renC))) (id String)
+paren = if:Boolean ⇒ sb:StringBuilder ⇒ StringBuilder ~
+	if StringBuilder (chrSB+ parC (sb+ sb (chrSB renC))) (id String)
+
+pretty = ctx:Context ⇒ pretty' = level:Natural ⇒ expr:Expression ⇒ StringBuilder ~
+  paren (≥ Natural ordNatural level (parenLevel expr)) (expr StringBuilder
+	  (chrSB asteriskC)
+	  (holeName:String ⇒ chrSB+ queryC (strSB holeName))
+	  (n:Natural ⇒ (index Expression ctx n) StringBuilder (chrSB bangC) (x:Expression ⇒ strSB (boundNameOf x)))
+	  (n:Natural ⇒ (index Expression ctx n) StringBuilder (chrSB bangC) (x:Expression ⇒ strSB (nameOf x)))
+    (TreeHash ⇒ strSB)
+	  (inType:Expression ⇒ outType:Expression ⇒ name:String ⇒ boundName:String ⇒ sb+ (showNames name boundName) (sb+ (pretty' 5 inType) (strSB+ (ConsS spaceC (ConsS leftArrowC (ConsS spaceC NilS))) (pretty (Cons Expression expr ctx) Zero outType))))
+	  (inType:Expression ⇒ body:Expression ⇒ name:String ⇒ boundName:String ⇒ sb+ (showNames name boundName) (sb+ (pretty' 5 inType) (strSB+ (ConsS spaceC (ConsS leftDoubleArrowC (ConsS spaceC NilS))) (pretty (Cons Expression expr ctx) Zero body))))
+	  (function:Expression ⇒ argument:Expression ⇒ name:String ⇒ sb+ (showName name) (sb+ (pretty' 5 function) (chrSB+ spaceC (pretty' 9 argument))))
+	  (outType:Expression ⇒ body:Expression ⇒ name:String ⇒ sb+ (showName name) (sb+ (pretty' 5 outType) (strSB+ (ConsS spaceC (ConsS tildeC (ConsS spaceC NilS))) (pretty' Zero body))))
+	)
