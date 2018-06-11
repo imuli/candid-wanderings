@@ -31,7 +31,7 @@ data Expression t
   | Apply String (Expression t) (Expression t)
   | Assert String (Expression t) (Expression t)
   | Hash String H.Hash
-  deriving (Show)
+  deriving (Show, Read)
 
 type Context t = [Expression t]
 

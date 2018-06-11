@@ -13,6 +13,8 @@ import qualified Data.Hashable as Hashable
 import qualified Numeric
 import Data.Bits
 import Data.Word
+import Data.Maybe (listToMaybe, catMaybes)
+import Data.Char (isSpace)
 
 data Hash = H Word32 Word32 Word32 Word32 Word32 Word32 Word32 Word32
   deriving Eq
@@ -114,8 +116,8 @@ pad n x xs = replicate (n - length xs) x ++ xs
 hexWord :: Word32 -> String
 hexWord n = pad 8 '0' $ Numeric.showHex n ""
 
-hexRead :: String -> Word32
-hexRead s = read $ '0':'x':s
+hexRead :: Integral t => String -> Maybe t
+hexRead = fmap fst . listToMaybe . Numeric.readHex
 
 toList :: Hash -> [Word32]
 toList (H a b c d e f g h) = [a,b,c,d,e,f,g,h]
@@ -132,13 +134,14 @@ chop _ [] = []
 chop n xs = take n xs : chop n (drop n xs)
 
 fromHex :: String -> Maybe Hash
-fromHex = fromList . map byteSwap . map hexRead . chop 8
+fromHex = fromList . map byteSwap . catMaybes . map hexRead . chop 8
 
 instance Show Hash where
   showsPrec _ h = (toHex h ++)
 
 instance Read Hash where
-  readsPrec _ str = case fromHex $ take 64 str of
+  readsPrec _ xs = let str = dropWhile isSpace xs
+                    in case fromHex $ take 64 str of
                          Nothing -> []
                          Just h -> [(h, drop 64 str)]
 

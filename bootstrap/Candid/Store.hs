@@ -19,7 +19,7 @@ data Entry = Entry { name :: String
                    , kind :: Expression Int
                    , expr :: Expression Int
                    , hash :: H.Hash
-                   } deriving (Show)
+                   } deriving (Show, Read)
 
 prettyEntry :: Entry -> String
 prettyEntry entry = "Name: " ++ name entry ++ "\nType: " ++ pretty [] (kind entry) ++ "\nExpression: " ++ pretty [] (expr entry) ++ "\nHash: " ++ H.toHex (Candid.Store.hash entry)
