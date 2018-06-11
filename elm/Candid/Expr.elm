@@ -16,6 +16,21 @@ type Expr
   | Type String Expr Expr -- name type body
   | Hash String Blake2s1 -- name hash
 
+fold : a -> a -> (String -> String -> a -> a -> a) -> (String -> String -> a -> a -> a) -> (String -> a -> a -> a) -> (Int -> a) -> (Int -> a) -> (String -> a -> a) -> (String -> a -> a -> a) -> (String -> Blake2s1 -> a) -> Expr -> a
+fold star hole pi lam app ref rec note typeas hash =
+  let f expr = case expr of
+                    Star -> star
+                    Hole -> hole
+                    Pi name arg kind body -> pi name arg (f kind) (f body)
+                    Lam name arg kind body -> lam name arg (f kind) (f body)
+                    App name func arg -> app name (f func) (f arg)
+                    Ref n -> ref n
+                    Rec n -> rec n
+                    Note comment body -> note comment (f body)
+                    Type name kind body -> typeas name (f kind) (f body)
+                    Hash name h -> hash name h
+  in f
+
 {- the greatest Refs or Recs beyond the number of enclosing Lams and Pis -}
 closed : Expr -> Int
 closed expr = case expr of
