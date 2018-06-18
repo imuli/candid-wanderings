@@ -5,6 +5,7 @@ module Candid.Expression
   ( Expression(..)
   , Context
   , closed
+  , hasRec
   , hash
   , inTypeOf
   , nameOf
@@ -79,6 +80,17 @@ hash (Lambda _ _ iT b) = H.hash (hash iT) (hash b) (0,0,0,2)
 hash (Apply _ f a) = H.hash (hash f) (hash a) (0,0,0,1)
 hash (Assert _ _ b) = hash b
 hash (Hash _ h) = h
+
+hasRec :: Integral t => Expression t -> Bool
+hasRec = hasRec' 0
+ where
+  hasRec' :: Integral t => t -> Expression t -> Bool
+  hasRec' d (Rec n) = n == d
+  hasRec' d (Pi _ _ iT oT) = hasRec' d iT || hasRec' (d+1) oT
+  hasRec' d (Lambda _ _ iT b) = hasRec' d iT || hasRec' (d+1) b
+  hasRec' d (Apply _ f a) = hasRec' d f || hasRec' d a
+  hasRec' d (Assert _ oT b) = hasRec' d oT || hasRec' d b
+  hasRec' _ _ = False
 
 closed :: Integral t => Expression t -> Bool
 closed = closed' 0

@@ -98,7 +98,7 @@ find :: Store -> Context String -> String -> Maybe (Expression Int)
 find store ctx str =
     case search str ctx of
          Just expr -> Just expr
-         Nothing -> fmap expr $ listToMaybe $ byName store str
+         Nothing -> fmap (Hash str . Candid.Store.hash) $ listToMaybe $ byName store str
 
 -- translate from Expression String to Expression Int
 number :: Store -> Expression String -> Expression Int

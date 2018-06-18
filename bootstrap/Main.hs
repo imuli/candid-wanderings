@@ -7,14 +7,18 @@ import Control.Exception
 import Candid.Store
 import Candid.Parse
 import Candid.Typecheck
+import Candid.Backend
+import Candid.Backend.Javascript
 
 import Data.Maybe (listToMaybe, catMaybes)
+import Data.List (intercalate)
 
 usage :: IO ()
 usage = do
   putStrLn "commands:"
   putStrLn "\tshow (name)+\tshow entries with name"
   putStrLn "\tload (file)\tload new expressions from file"
+  putStrLn "\tcompile (exprs)\tcompile expressions"
 
 nullFile :: IOException -> IO String
 nullFile _ = return ""
@@ -23,7 +27,7 @@ loadStore :: IO Store
 loadStore = do
   content <- (readFile "candid.store") `catch` nullFile
   return $ case listToMaybe $ reads content of
-                Nothing -> empty
+                Nothing -> Candid.Store.empty
                 Just (store, _) -> store
 
 saveStore :: Store -> IO ()
@@ -51,4 +55,9 @@ main = do
   case listToMaybe args of
        Just "show" -> putStrLn $ unlines $ map (unlines . (map prettyEntry) . byName store) (tail args)
        Just "load" -> loadFile (head $ tail args) store >>= saveStore
+       Just "compile" ->
+         case fmap catMaybes $ parseText $ intercalate " " $ tail args of
+              Left err -> putStrLn $ show err
+              Right [] -> putStrLn "Nothing to compile."
+              Right exprs -> putStrLn $ compile (Candid.Backend.empty :: Javascript) store $ map (number store) exprs
        _ -> usage
