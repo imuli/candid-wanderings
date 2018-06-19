@@ -7,27 +7,23 @@ import Candid.Backend
 
 data Javascript = JS (String -> String) (String -> String)
 
-showIntegral :: Integral t => t -> String
-showIntegral n = show $ fromIntegral n
-
-jscompile :: Integral t => Expression t -> t -> String -> String
+jscompile :: Expression -> Int -> String -> String
 jscompile expr depth rest =
   case expr of
-       Ref n -> "v" ++ showIntegral (depth - 1 - n) ++ rest
-       Rec n -> "f" ++ showIntegral (depth - 1 - n) ++ rest
-       Lambda _ _ _ body ->
+       Ref n -> "v" ++ show (depth - 1 - n) ++ rest
+       Name _ body ->
          let depth' = if closed body then 0 else depth
-             recWrapper :: (String -> String) -> String -> String
-             recWrapper s more =
-               if hasRec body
-                  then "(()=>{var f" ++ showIntegral depth' ++ "=" ++ s (";return f" ++ showIntegral depth' ++ ";})()" ++ more)
-                  else "(" ++ s (")" ++ more)
-             compBody :: String -> String
-             compBody more = "(v" ++ showIntegral depth' ++ ")=>" ++ jscompile body (depth'+1) more
-          in recWrapper compBody rest
-       Apply _ function argument ->
+             wrapper :: (String -> String) -> String -> String
+             wrapper inner more = "(()=>{var v" ++ show depth' ++ "=" ++ inner (";return f" ++ show depth' ++ ";})()" ++ more)
+          in wrapper (jscompile body (depth'+1)) rest
+       Lambda _ _ body ->
+         let depth' = if closed body then 0 else depth
+             wrapper :: (String -> String) -> String -> String
+             wrapper inner more = "((v" ++ show depth' ++ ")=>" ++ inner (")" ++ more)
+          in wrapper (jscompile body (depth'+1)) rest
+       Apply function argument ->
          jscompile function depth ('(':jscompile argument depth (')':rest))
-       Assert _ _ body -> jscompile body depth rest
+       Assert _ body -> jscompile body depth rest
        Hash _ hsh -> '$' : show hsh ++ rest
        _ -> "undefined" ++ rest
 

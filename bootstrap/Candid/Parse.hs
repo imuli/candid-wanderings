@@ -1,10 +1,10 @@
+{-#OPTIONS_GHC -Wall #-}
 module Candid.Parse where
 
 import Candid.Expression
 import Candid.Typecheck
 import Candid.Store
 import Text.Parsec
-import Text.Parsec.Token
 import Data.Maybe (listToMaybe)
 
 cSpaces1 :: Parsec String st ()
@@ -17,113 +17,97 @@ binaries :: String
 binaries = ":=~⇒→"
 
 nullaries :: String
-nullaries = "*?"
+nullaries = "*"
 
 nameChar :: Parsec String st Char
 nameChar = noneOf (" \t\r\n()" ++ nullaries ++ binaries)
 
-rename :: String -> (Expression t) -> (Expression t)
-rename name expr = case expr of
-  Pi _ bn i o -> Pi name bn i o
-  Lambda _ bn i b -> Lambda name bn i b
-  Assert _ i b -> Assert name i b
-  Apply _ f a -> Apply name f a
-  _ -> expr
-
-pStar :: Parsec String st (Expression String)
+pStar :: Parsec String st Expression
 pStar = try $ Star <$ char '*'
 
-pHole :: Parsec String st (Expression String)
-pHole = try $ Hole <$> (char '?' *> many nameChar)
-
-pName :: Char -> Parsec String st String
-pName c = try (cSpaces *> many1 nameChar <* cSpaces <* char c) <|> string ""
+pNm :: Char -> Parsec String st String
+pNm c = try (cSpaces *> many1 nameChar <* cSpaces <* char c) <|> string ""
 
 -- actually reference or recurence, as they are not distinguishable here
-pRef :: Parsec String st (Expression String)
-pRef = Ref <$> many1 nameChar
+pRef :: Parsec String st Expression
+pRef = Hole <$> many1 nameChar
 
-pRename :: Parsec String st (Expression String) -> Parsec String st (Expression String)
-pRename p = rename <$> pName '=' <*> p
+pName :: Parsec String st Expression
+pName = try $ Name <$> pNm '=' <*> pExpr
 
-pPi :: Parsec String st (Expression String)
-pPi = try $ Pi "" <$> pName ':' <*> pExpr' <*> (cSpaces *> char '→' *> pExpr)
+pPi :: Parsec String st Expression
+pPi = try $ Pi <$> pNm ':' <*> pExpr' <*> (cSpaces *> char '→' *> pExpr)
 
-pLambda :: Parsec String st (Expression String)
-pLambda = try $ Lambda "" <$> pName ':' <*> pExpr' <*> (cSpaces *> char '⇒' *> pExpr)
+pLambda :: Parsec String st Expression
+pLambda = try $ Lambda <$> pNm ':' <*> pExpr' <*> (cSpaces *> char '⇒' *> pExpr)
 
-pAssert :: Parsec String st (Expression String)
-pAssert = try $ Assert "" <$> pExpr' <*> (cSpaces *> char '~' *> pExpr)
+pAssert :: Parsec String st Expression
+pAssert = try $ Assert <$> pExpr' <*> (cSpaces *> char '~' *> pExpr)
 
-pAppList :: Parsec String st [Expression String]
+pAppList :: Parsec String st [Expression]
 pAppList = funcs `sepBy1` (try (cSpaces1 <* notFollowedBy (oneOf (binaries ++ ")"))))
   where
-    funcs = cSpaces *> choice [paren pExpr, pRef, pStar, pHole]
+    funcs = cSpaces *> choice [paren pExpr, pRef, pStar]
 
-applyFromList :: [Expression t] -> Expression t
+applyFromList :: [Expression] -> Expression
 applyFromList = afl . reverse
   where
+    afl [] = Hole ""
     afl (x : []) = x
-    afl (x : xs) = Apply "" (afl xs) x
+    afl (x : xs) = Apply (afl xs) x
 
-pApply :: Parsec String st (Expression String)
+pApply :: Parsec String st Expression
 pApply = applyFromList <$> try pAppList
 
 paren :: Parsec String st u -> Parsec String st u
 paren inner = try $ char '(' *> inner <* (cSpaces *> char ')')
 
-pExpr' :: Parsec String st (Expression String)
-pExpr' = cSpaces *> choice [pApply, (paren pExpr), pRef, pStar, pHole]
+pExpr' :: Parsec String st Expression
+pExpr' = cSpaces *> choice [pApply, (paren pExpr), pRef, pStar]
 
-pExpr :: Parsec String st (Expression String)
-pExpr = cSpaces *> pRename (choice [pLambda, pPi, pAssert, pApply, (paren pExpr), pRef, pStar, pHole])
+pExpr :: Parsec String st Expression
+pExpr = cSpaces *> choice [pName, pLambda, pPi, pAssert, pApply, (paren pExpr), pRef, pStar]
 
-pExprs :: Parsec String st [Maybe (Expression String)]
+pExprs :: Parsec String st [Maybe Expression]
 pExprs = optionMaybe pExpr `sepBy` char '\n'
 
-pFile :: Parsec String st [Maybe (Expression String)]
+pFile :: Parsec String st [Maybe Expression]
 pFile = pExprs <* eof
 
 -- search for a name in context
-search :: String -> Context String -> Maybe (Expression Int)
+search :: String -> Context -> Maybe Expression
 search str = search' 0 where
-  search' :: Int -> Context String -> Maybe (Expression Int)
+  search' :: Int -> Context -> Maybe Expression
   search' _ []        = Nothing
-  search' n (x : ctx) = if str == nameOf x then Just (Rec n)
-                        else if str == boundNameOf x then Just (Ref n)
+  search' n (x : ctx) = if str == nameOf x then Just (Ref n)
                         else search' (n+1) ctx
 
 -- look up a name in context and store
-find :: Store -> Context String -> String -> Maybe (Expression Int)
+find :: Store -> Context -> String -> Maybe Expression
 find store ctx str =
     case search str ctx of
          Just expr -> Just expr
-         Nothing -> fmap (Hash str . Candid.Store.hash) $ listToMaybe $ byName store str
+         Nothing -> fmap (Hash str . entryHash) $ listToMaybe $ byName store str
 
--- translate from Expression String to Expression Int
-number :: Store -> Expression String -> Expression Int
-number store = num []
+-- translate from Expression to Expression
+fillHoles :: Store -> Expression -> Expression
+fillHoles store = num []
  where
-  withName nm fn expr = if nm == ""
-                           then fn expr
-                           else rename (nameOf expr) $ fn $ rename nm expr
-  num :: Context String -> Expression String -> Expression Int
+  num :: Context -> Expression -> Expression
   num ctx = num'
    where
    num' expr = case expr of
      Star -> Star
-     Rec s -> case find store ctx s of
+     Ref n -> Ref n
+     Hole s -> case find store ctx s of
                    Nothing -> Hole s
                    Just repl -> repl
-     Ref s -> case find store ctx s of
-                   Nothing -> Hole s
-                   Just repl -> repl
-     Pi name bindName inType outType -> Pi name bindName (num' inType) (num (expr:ctx) outType)
-     Lambda name bindName inType body -> Lambda name bindName (num' inType) (num (expr:ctx) body)
-     Apply name function argument -> Apply name (num' function) (num' argument)
-     Assert name outType body -> Assert name (num' outType) (withName name num' body)
+     Name name body -> Name name (num (expr:ctx) body)
+     Pi name inType outType -> Pi name (num' inType) (num (expr:ctx) outType)
+     Lambda name inType body -> Lambda name (num' inType) (num (expr:ctx) body)
+     Apply function argument -> Apply (num' function) (num' argument)
+     Assert outType body -> Assert (num' outType) (num' body)
      Hash n h -> Hash n h
-     Hole s -> Hole s
 
 
 mapLeft :: (a->c) -> Either a b -> Either c b
@@ -131,11 +115,11 @@ mapLeft f (Left x) = Left (f x)
 mapLeft _ (Right x) = Right x
 
 -- translate and save a list of expressions
-numberInto :: Store -> [Expression String] -> Either (String, TypeError) Store
-numberInto store = foldl into $ Right store
+numberInto :: Store -> [Expression] -> Either (String, TypeError) Store
+numberInto = foldl into . Right
   where
-    into :: Either (String, TypeError) Store -> Expression String -> Either (String, TypeError) Store
-    into est expr = est >>= \store -> fmap snd $ (mapLeft (\te -> (nameOf expr, te)) $ add store $ number store expr)
+    into :: Either (String, TypeError) Store -> Expression -> Either (String, TypeError) Store
+    into est expr = est >>= \store -> fmap snd $ (mapLeft (\te -> (nameOf expr, te)) $ add store $ fillHoles store expr)
 
-parseText :: String -> Either ParseError [Maybe (Expression String)]
+parseText :: String -> Either ParseError [Maybe Expression]
 parseText = parse pFile ""

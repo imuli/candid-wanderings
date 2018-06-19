@@ -59,5 +59,5 @@ main = do
          case fmap catMaybes $ parseText $ intercalate " " $ tail args of
               Left err -> putStrLn $ show err
               Right [] -> putStrLn "Nothing to compile."
-              Right exprs -> putStrLn $ compile (Candid.Backend.empty :: Javascript) store $ map (number store) exprs
+              Right exprs -> putStrLn $ compile (Candid.Backend.empty :: Javascript) store $ map (fillHoles store) exprs
        _ -> usage
