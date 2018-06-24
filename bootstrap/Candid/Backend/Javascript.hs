@@ -10,21 +10,20 @@ data Javascript = JS (String -> String) (String -> String)
 jscompile :: Expression -> Int -> String -> String
 jscompile expr depth rest =
   case expr of
-       Ref n -> "v" ++ show (depth - 1 - n) ++ rest
-       Name _ body ->
+       Ref _ n -> "v" ++ show (depth - 1 - n) ++ rest
+       Name _ _ body ->
          let depth' = if closed body then 0 else depth
              wrapper :: (String -> String) -> String -> String
              wrapper inner more = "(()=>{var v" ++ show depth' ++ "=" ++ inner (";return f" ++ show depth' ++ ";})()" ++ more)
           in wrapper (jscompile body (depth'+1)) rest
-       Lambda _ _ body ->
+       Lambda _ _ _ body ->
          let depth' = if closed body then 0 else depth
              wrapper :: (String -> String) -> String -> String
              wrapper inner more = "((v" ++ show depth' ++ ")=>" ++ inner (")" ++ more)
           in wrapper (jscompile body (depth'+1)) rest
-       Apply function argument ->
+       Apply _ function argument ->
          jscompile function depth ('(':jscompile argument depth (')':rest))
-       Assert _ body -> jscompile body depth rest
-       Hash _ hsh -> '$' : show hsh ++ rest
+       Hash _ _ hsh -> '$' : show hsh ++ rest
        _ -> "undefined" ++ rest
 
 instance Backend Javascript

@@ -4,6 +4,7 @@ import System.Environment
 import System.Directory (renameFile)
 import Control.Exception
 
+import Candid.Expression
 import Candid.Store
 import Candid.Parse
 import Candid.Typecheck
@@ -38,14 +39,14 @@ saveStore store = do
 loadFile :: String -> Store -> IO Store
 loadFile fname store = do
   input <- readFile fname `catch` nullFile
-  case fmap catMaybes $ parseText input of
+  case parseText input of
        Left err -> do putStrLn $ show err
                       return store
        Right [] -> return store
        Right exprs ->
-         case numberInto store exprs of
-              Left (at, err) -> do putStrLn $ "Error in " ++ at ++ "\n" ++ prettyError err
-                                   return store
+         case loadExprs store exprs of
+              Left err -> do putStrLn err
+                             return store
               Right st -> return st
 
 main :: IO ()
@@ -55,9 +56,21 @@ main = do
   case listToMaybe args of
        Just "show" -> putStrLn $ unlines $ map (unlines . (map prettyEntry) . byName store) (tail args)
        Just "load" -> loadFile (head $ tail args) store >>= saveStore
+       Just "typecheck" ->
+         case parseText $ intercalate " " $ tail args of
+              Left err -> putStrLn $ show err
+              Right [] -> putStrLn "Nothing to check."
+              Right exprs ->
+                let exprs' = map (typeFill (fmap entryExpr . byHash store) [] . toExpression store) exprs
+                 in putStrLn $ unlines $ map (\expr -> pretty [] (typeOf expr) ++ " ~ \n\t" ++ pretty [] expr) exprs'
        Just "compile" ->
-         case fmap catMaybes $ parseText $ intercalate " " $ tail args of
+         case parseText $ intercalate " " $ tail args of
               Left err -> putStrLn $ show err
               Right [] -> putStrLn "Nothing to compile."
-              Right exprs -> putStrLn $ compile (Candid.Backend.empty :: Javascript) store $ map (fillHoles store) exprs
+              Right exprs ->
+                let exprs' = map (typeFill (fmap entryExpr . byHash store) [] . toExpression store) exprs
+                 in case concat $ map holesIn exprs' of
+                         [] -> putStrLn $ compile (Candid.Backend.empty :: Javascript) store exprs'
+                         holes -> putStrLn $ unlines holes
+                
        _ -> usage

@@ -1,79 +1,70 @@
 {-#OPTIONS_GHC -Wall #-}
 module Candid.Typecheck
-  ( TypeError(..)
-  , typecheck
-  , prettyError
+  ( typeFill
   ) where
 
 import Data.Maybe (listToMaybe)
 import Candid.Expression
 import qualified Blake2s1 as H
 
-data TypeError
-  = TypeMismatch Context Expression Expression Expression
-  | HasHole Context Expression
-  | OpenExpression Context Expression
-  | TypeInference Context Expression
-  deriving (Show)
-
-
-prettyError :: TypeError -> String
-prettyError err =
-  case err of
-       TypeMismatch ctx expr expected actual -> "Type mismatch" ++ ctxMsg ctx ++ " at " ++ pretty ctx expr ++ "\n\tExpected type: " ++ pretty ctx expected ++ "\n\tActual type: " ++ pretty ctx actual
-       HasHole ctx expr -> "Hole " ++ pretty ctx expr ++ ctxMsg ctx
-       OpenExpression ctx expr -> "Open Expression " ++ pretty ctx expr ++ ctxMsg ctx
-       TypeInference ctx expr -> "Type Inference with " ++ pretty ctx expr ++ ctxMsg ctx
- where
-   ctxMsg :: Context -> String
-   ctxMsg [] = ""
-   ctxMsg (x:xs) = " in expression `" ++ pretty xs x ++ "`"
-
 index :: Int -> [a] -> Maybe a
 index i = listToMaybe . drop i
 
-typecheck :: (H.Hash -> Maybe Expression) -> (H.Hash -> Maybe Expression) -> Bool -> Bool -> Context -> Expression -> Either TypeError Expression
-typecheck hashExpr hashType holeOk = tc
-  where
-    unwrapType :: Expression -> Either a Expression
-    unwrapType x = Right $ case x of
-                        Hash _ h -> maybe x id $ hashExpr h
-                        _ -> x
-    isStar _ _ Star = Right Star
-    isStar ctx x ty = Left $ TypeMismatch ctx x Star ty
-    tc trust ctx expr =
-      case (trust,expr) of
-           (True, Pi _ _ _) -> Right Star
-           (True, Assert outType _) -> Right outType
-           (_, Name _ body) -> tc trust (expr:ctx) body
-           (_, Hole _) -> if holeOk
-                             then Right expr
-                             else Left $ HasHole ctx expr
-           (_, Star) -> Right Star
-           (_, Ref n) -> case index n ctx of
-                              Nothing -> Left $ OpenExpression ctx expr
-                              Just (Name _ b) -> if trust
-                                                    then Left $ TypeInference ctx expr
-                                                    else tc True (drop n ctx) b >>= Right . (shift (n+))
-                              Just x -> Right $ shift (n+1+) $ inTypeOf x
-           (_, Pi _ inType outType) ->
-             tc trust ctx inType >>= isStar ctx inType >>
-             tc trust (expr:ctx) outType >>= isStar ctx outType
-           (_, Assert outType body) ->
-             tc trust ctx outType >>= isStar ctx outType >>
-             tc trust ctx body >>= (\actual ->
-               if equiv hashExpr ctx outType ctx actual
-                  then Right outType
-                  else Left (TypeMismatch ctx body outType actual))
-           (_, Apply func arg) ->
-             tc trust ctx func >>= unwrapType >>= \funcType -> tc trust ctx arg >>= \argType ->
-               case applicate hashExpr funcType of
-                    Pi _ inType outType ->
-                      if equiv hashExpr ctx inType ctx argType
-                         then Right (replace arg outType)
-                         else Left (TypeMismatch ctx arg inType argType)
-                    _ -> Left $ TypeMismatch ctx func (Pi "" argType $ Hole "") funcType
-           (_, Lambda nm inType body) ->
-             tc trust ctx inType >>= isStar ctx inType >>
-             tc trust (expr:ctx) body >>= \outType -> Right $ Pi nm inType outType
-           (_, Hash name h) -> Right $ maybe (Hole name) id $ hashType h
+refTypeOf :: Expression -> Expression
+refTypeOf expr =
+  case expr of
+       Name ty _ body ->
+         case ty of
+              Hole _ -> replace expr $ typeOf body
+              _ -> ty
+       Pi _ inType _ -> inType
+       Lambda _ _ inType _ -> inType
+       _ -> Hole "weird reference"
+
+typeFill :: (H.Hash -> Maybe Expression) -> Context -> Expression -> Expression
+typeFill hashExpr =
+  let check ctx a b =
+        case a of
+             Hole _ -> b
+             _ -> if equiv hashExpr a b then a else Hole $ "Failed type assertion: " ++ pretty ctx a ++ " was found as " ++ pretty ctx b ++ "."
+      tf ctx expr =
+        case expr of
+             Star -> Star
+             Hole _ -> expr
+             Ref _ n -> case index n ctx of
+                             Nothing -> Ref (Hole "open expression") n
+                             Just ref -> Ref (tf ctx $ shift (n+1+) $ refTypeOf ref) n
+             Name ty name body ->
+               let ty' = tf ctx ty
+                   body' = tf (Name ty' name body:ctx) body
+                in Name (check ctx ty' $ typeOf $ replace (Name ty' name body') body') name body'
+             Pi name inType outType ->
+               let inType' = tf ctx inType
+                   outType' = tf (Pi name inType' outType : ctx) outType
+                in Pi name inType' outType'
+             Lambda ty name inType body ->
+               let ty' = tf ctx ty
+                   inType' = tf ctx inType
+                   body' = tf (Lambda ty' name inType' body : ctx) body
+                in Lambda (check ctx ty' $ Pi name inType' $ typeOf body') name inType' body'
+             Apply ty function argument ->
+               let ty' = tf ctx ty
+                   func' = tf ctx function
+                   arg' = tf ctx argument
+                in case applicate hashExpr $ typeOf func' of
+                        Pi _ inType outType ->
+                          if equiv hashExpr inType $ typeOf arg'
+                             then Apply (check ctx ty' $ replace arg' outType) func' arg'
+                             else Apply (Hole $ "Type mismatch (" ++
+                               pretty ctx (typeOf func') ++ ") does not take (" ++
+                                 pretty ctx (typeOf arg') ++ ").") func' arg'
+                        Hole _ -> Apply hole func' arg'
+                        _ ->
+                          Apply (Hole $
+                            "(" ++ pretty ctx (typeOf func') ++ ") is not a function type.") func' arg'
+                   
+             Hash ty name hash ->
+               case hashExpr hash of
+                    Nothing -> Hash (tf ctx ty) name hash
+                    Just expr' -> Hash (typeOf expr') name hash
+   in tf

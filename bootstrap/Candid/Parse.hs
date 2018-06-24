@@ -2,124 +2,127 @@
 module Candid.Parse where
 
 import Candid.Expression
-import Candid.Typecheck
 import Candid.Store
-import Text.Parsec
-import Data.Maybe (listToMaybe)
+import Text.Parsec hiding (spaces)
+import Data.Maybe (listToMaybe, catMaybes)
+import Data.List (elemIndex)
 
-cSpaces1 :: Parsec String st ()
-cSpaces1 = () <$ optional (try (many (oneOf " \t\r") <* newline)) <* many1 (oneOf " \t")
+data ExprP
+  = StarP
+  | RefP String
+  | TypeP ExprP ExprP
+  | NameP String ExprP
+  | PiP String ExprP ExprP
+  | LamP String ExprP ExprP
+  | AppP [ExprP]
+  deriving (Show, Eq)
 
-cSpaces :: Parsec String st ()
-cSpaces = () <$ many (oneOf " \t\r") <* optional (try (newline <* many1 (oneOf " \t")))
+-- for converting to Expressions
 
-binaries :: String
-binaries = ":=~⇒→"
+find :: Store -> [String] -> String -> Maybe Expression
+find store ctx str =
+  case str of
+       "" -> Nothing
+       _ -> case elemIndex str ctx of
+                 Just n -> Just $ Ref hole n
+                 Nothing -> fmap hashFrom $ listToMaybe $ byName store str
 
-nullaries :: String
-nullaries = "*"
+toExpression :: Store -> ExprP -> Expression
+toExpression store =
+  let rec ctx expr =
+        case expr of
+             StarP -> Star
+             RefP name -> maybe (Hole name) id $ find store ctx name
+             NameP name body -> Name hole name (rec (name:ctx) body)
+             PiP name inType outType -> Pi name (rec ctx inType) (rec (name:ctx) outType)
+             LamP name inType body -> Lambda hole name (rec ctx inType) (rec (name:ctx) body)
+             AppP [] -> hole
+             AppP (x:xs) -> foldl (Apply hole) (rec ctx x) $ map (rec ctx) xs
+             TypeP bodyType body -> rec ctx body `withType` rec ctx bodyType
+   in rec []
 
-nameChar :: Parsec String st Char
-nameChar = noneOf (" \t\r\n()" ++ nullaries ++ binaries)
+-- for storing
 
-pStar :: Parsec String st Expression
-pStar = try $ Star <$ char '*'
+loadExpr :: Store -> ExprP -> Either String Store
+loadExpr store = fmap snd . add store . toExpression store
 
-pNm :: Char -> Parsec String st String
-pNm c = try (cSpaces *> many1 nameChar <* cSpaces <* char c) <|> string ""
+loadExprs :: Store -> [ExprP] -> Either String Store
+loadExprs store =
+  foldl (\st x -> either (const st) (flip loadExpr x) st) (Right store)
 
--- actually reference or recurence, as they are not distinguishable here
-pRef :: Parsec String st Expression
-pRef = Hole <$> many1 nameChar
+-- for parsing
 
-pName :: Parsec String st Expression
-pName = try $ Name <$> pNm '=' <*> pExpr
+bichars :: String
+bichars = ":=~⇒→"
 
-pPi :: Parsec String st Expression
-pPi = try $ Pi <$> pNm ':' <*> pExpr' <*> (cSpaces *> char '→' *> pExpr)
+nullchars :: String
+nullchars = "*"
 
-pLambda :: Parsec String st Expression
-pLambda = try $ Lambda <$> pNm ':' <*> pExpr' <*> (cSpaces *> char '⇒' *> pExpr)
+spaceChars :: String
+spaceChars = " \t\r\n"
 
-pAssert :: Parsec String st Expression
-pAssert = try $ Assert <$> pExpr' <*> (cSpaces *> char '~' *> pExpr)
+nameString :: Parsec String st String
+nameString = many1 $ noneOf ("()" ++ spaceChars ++ nullchars ++ bichars)
 
-pAppList :: Parsec String st [Expression]
-pAppList = funcs `sepBy1` (try (cSpaces1 <* notFollowedBy (oneOf (binaries ++ ")"))))
-  where
-    funcs = cSpaces *> choice [paren pExpr, pRef, pStar]
+maybeName :: Parsec String st String
+maybeName = try (nameString <* spaces <* char ':') <|> string ""
 
-applyFromList :: [Expression] -> Expression
-applyFromList = afl . reverse
-  where
-    afl [] = Hole ""
-    afl (x : []) = x
-    afl (x : xs) = Apply (afl xs) x
+spaces1 :: Parsec String st ()
+spaces1 = () <$ optional (try (many (oneOf " \t\r") <* newline)) <* many1 (oneOf " \t")
 
-pApply :: Parsec String st Expression
-pApply = applyFromList <$> try pAppList
+spaces :: Parsec String st ()
+spaces = () <$ many (oneOf " \t\r") <* optional (try (newline <* many1 (oneOf " \t")))
 
 paren :: Parsec String st u -> Parsec String st u
-paren inner = try $ char '(' *> inner <* (cSpaces *> char ')')
+paren inner = try $ char '(' *> inner <* spaces <* char ')'
 
-pExpr' :: Parsec String st Expression
-pExpr' = cSpaces *> choice [pApply, (paren pExpr), pRef, pStar]
+starP :: Parsec String st ExprP
+starP = StarP <$ char '*'
 
-pExpr :: Parsec String st Expression
-pExpr = cSpaces *> choice [pName, pLambda, pPi, pAssert, pApply, (paren pExpr), pRef, pStar]
+refP :: Parsec String st ExprP
+refP = RefP <$> nameString
 
-pExprs :: Parsec String st [Maybe Expression]
-pExprs = optionMaybe pExpr `sepBy` char '\n'
+typeP :: Parsec String st ExprP
+typeP = try $ TypeP <$> inTypeP <* char '~' <*> exprP
 
-pFile :: Parsec String st [Maybe Expression]
-pFile = pExprs <* eof
+nameP :: Parsec String st ExprP
+nameP = try $ NameP <$> nameString <* spaces <* char '=' <*> exprP
 
--- search for a name in context
-search :: String -> Context -> Maybe Expression
-search str = search' 0 where
-  search' :: Int -> Context -> Maybe Expression
-  search' _ []        = Nothing
-  search' n (x : ctx) = if str == nameOf x then Just (Ref n)
-                        else search' (n+1) ctx
+piP :: Parsec String st ExprP
+piP = try $ PiP <$> maybeName <*> inTypeP <* char '→' <*> exprP
 
--- look up a name in context and store
-find :: Store -> Context -> String -> Maybe Expression
-find store ctx str =
-    case search str ctx of
-         Just expr -> Just expr
-         Nothing -> fmap (Hash str . entryHash) $ listToMaybe $ byName store str
+lamP :: Parsec String st ExprP
+lamP = try $ LamP <$> maybeName <*> inTypeP <* char '⇒' <*> exprP
 
--- translate from Expression to Expression
-fillHoles :: Store -> Expression -> Expression
-fillHoles store = num []
- where
-  num :: Context -> Expression -> Expression
-  num ctx = num'
-   where
-   num' expr = case expr of
-     Star -> Star
-     Ref n -> Ref n
-     Hole s -> case find store ctx s of
-                   Nothing -> Hole s
-                   Just repl -> repl
-     Name name body -> Name name (num (expr:ctx) body)
-     Pi name inType outType -> Pi name (num' inType) (num (expr:ctx) outType)
-     Lambda name inType body -> Lambda name (num' inType) (num (expr:ctx) body)
-     Apply function argument -> Apply (num' function) (num' argument)
-     Assert outType body -> Assert (num' outType) (num' body)
-     Hash n h -> Hash n h
+funcP :: Parsec String st ExprP
+funcP = choice [paren exprP, starP, refP]
 
+sepBy2 :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
+sepBy2 it sep = (:) <$> it <* sep <*> it `sepBy1` sep
 
-mapLeft :: (a->c) -> Either a b -> Either c b
-mapLeft f (Left x) = Left (f x)
-mapLeft _ (Right x) = Right x
+appP :: Parsec String st ExprP
+appP = try $ AppP <$> funcP `sepBy2` try (spaces1 <* (notFollowedBy $ oneOf $ bichars ++ ")"))
 
--- translate and save a list of expressions
-numberInto :: Store -> [Expression] -> Either (String, TypeError) Store
-numberInto = foldl into . Right
-  where
-    into :: Either (String, TypeError) Store -> Expression -> Either (String, TypeError) Store
-    into est expr = est >>= \store -> fmap snd $ (mapLeft (\te -> (nameOf expr, te)) $ add store $ fillHoles store expr)
+inTypeP :: Parsec String st ExprP
+inTypeP = spaces *> choice [appP, paren exprP, starP, refP] <* spaces
 
-parseText :: String -> Either ParseError [Maybe Expression]
-parseText = parse pFile ""
+exprP :: Parsec String st ExprP
+exprP = spaces *> choice [lamP, piP, nameP, typeP, appP, paren exprP, starP, refP] <* spaces
+
+exprsP :: Parsec String st [ExprP]
+exprsP = fmap catMaybes $ optionMaybe exprP `sepBy` char '\n'
+
+parseText :: String -> Either ParseError [ExprP]
+parseText = parse exprsP ""
+
+-- various parsing things
+splitExprs :: String -> [String]
+splitExprs source =
+  let with :: a -> [[a]] -> [[a]]
+      with x xs = (x : head xs) : tail xs
+   in case source of
+           "" -> [""]
+           '\n' : ' ' : xs -> with '\n' $ with ' ' $ splitExprs xs
+           '\n' : '\t' : xs -> with '\t' $ with ' ' $ splitExprs xs
+           '\n' : xs -> "" : splitExprs xs
+           x : xs -> with x $ splitExprs xs
