@@ -1,5 +1,12 @@
 {-#OPTIONS_GHC -Wall #-}
-module Candid.Parse where
+module Candid.Parse
+  ( toExpression
+  , loadExpr
+  , loadExprs
+  , exprP
+  , parseText
+  , splitExprs
+  ) where
 
 import Candid.Expression
 import Candid.Store
@@ -14,7 +21,7 @@ data ExprP
   | NameP String ExprP
   | PiP String ExprP ExprP
   | LamP String ExprP ExprP
-  | AppP [ExprP]
+  | AppP ExprP ExprP
   deriving (Show, Eq)
 
 -- for converting to Expressions
@@ -36,8 +43,7 @@ toExpression store =
              NameP name body -> Name hole name (rec (name:ctx) body)
              PiP name inType outType -> Pi name (rec ctx inType) (rec (name:ctx) outType)
              LamP name inType body -> Lambda hole name (rec ctx inType) (rec (name:ctx) body)
-             AppP [] -> hole
-             AppP (x:xs) -> foldl (Apply hole) (rec ctx x) $ map (rec ctx) xs
+             AppP function argument -> Apply hole (rec ctx function) (rec ctx argument)
              TypeP bodyType body -> rec ctx body `withType` rec ctx bodyType
    in rec []
 
@@ -52,6 +58,14 @@ loadExprs store =
 
 -- for parsing
 
+{- The parser can be in a couple states:
+ 1. Nothing yet in this (sub)expression.
+ 2. Has a name.
+ 3. Has a label.
+ 4. Has an expression.
+ 4. Has an expression and a label.
+-}
+
 bichars :: String
 bichars = ":=~⇒→"
 
@@ -63,12 +77,6 @@ spaceChars = " \t\r\n"
 
 nameString :: Parsec String st String
 nameString = many1 $ noneOf ("()" ++ spaceChars ++ nullchars ++ bichars)
-
-maybeName :: Parsec String st String
-maybeName = try (nameString <* spaces <* char ':') <|> string ""
-
-spaces1 :: Parsec String st ()
-spaces1 = () <$ optional (try (many (oneOf " \t\r") <* newline)) <* many1 (oneOf " \t")
 
 spaces :: Parsec String st ()
 spaces = () <$ many (oneOf " \t\r") <* optional (try (newline <* many1 (oneOf " \t")))
@@ -82,32 +90,60 @@ starP = StarP <$ char '*'
 refP :: Parsec String st ExprP
 refP = RefP <$> nameString
 
-typeP :: Parsec String st ExprP
-typeP = try $ TypeP <$> inTypeP <* char '~' <*> exprP
+-- Nothing yet in this expression.
+exprP :: Parsec String st ExprP
+exprP = spaces *>
+  choice [ starP >>= withExprP
+         , paren exprP >>= withExprP
+         , nameString >>= withNameP
+         ]
 
-nameP :: Parsec String st ExprP
-nameP = try $ NameP <$> nameString <* spaces <* char '=' <*> exprP
-
-piP :: Parsec String st ExprP
-piP = try $ PiP <$> maybeName <*> inTypeP <* char '→' <*> exprP
-
-lamP :: Parsec String st ExprP
-lamP = try $ LamP <$> maybeName <*> inTypeP <* char '⇒' <*> exprP
+-- With just a name, we need:
+-- : starts a lambda or pi
+-- = makes a name
+-- anything else means this name is a reference
+withNameP :: String -> Parsec String st ExprP
+withNameP name = spaces *>
+  choice [ char ':' *> withLabelP name
+         , char '=' *> (NameP name <$> exprP)
+         , withExprP $ RefP name
+         ]
 
 funcP :: Parsec String st ExprP
-funcP = choice [paren exprP, starP, refP]
+funcP = choice [starP, paren exprP, refP]
 
-sepBy2 :: Stream s m t => ParsecT s u m a -> ParsecT s u m sep -> ParsecT s u m [a]
-sepBy2 it sep = (:) <$> it <* sep <*> it `sepBy1` sep
-
-appP :: Parsec String st ExprP
-appP = try $ AppP <$> funcP `sepBy2` try (spaces1 <* (notFollowedBy $ oneOf $ bichars ++ ")"))
+-- With an expression, we need:
+-- → to make a pi
+-- ⇒ to make a lambda
+-- ~ to make a type assertion
+-- another expression piece to make an apply
+-- or we're done
+withExprP :: ExprP -> Parsec String st ExprP
+withExprP expr = spaces *>
+  choice [ char '→' *> (PiP "" expr <$> exprP)
+         , char '⇒' *> (LamP "" expr <$> exprP)
+         , char '~' *> (TypeP expr <$> exprP)
+         , (AppP expr <$> funcP) >>= withExprP
+         , return expr <* spaces
+         ]
 
 inTypeP :: Parsec String st ExprP
-inTypeP = spaces *> choice [appP, paren exprP, starP, refP] <* spaces
+inTypeP = choice [starP, paren exprP, refP]
 
-exprP :: Parsec String st ExprP
-exprP = spaces *> choice [lamP, piP, nameP, typeP, appP, paren exprP, starP, refP] <* spaces
+-- With a label, we need an input type.
+withLabelP :: String -> Parsec String st ExprP
+withLabelP name = spaces *> inTypeP >>= withLabelExprP name
+
+-- With a label and an expression, we need:
+-- → to make a pi
+-- ⇒ to make a lambda
+-- another expression piece to make an apply
+withLabelExprP :: String -> ExprP -> Parsec String st ExprP
+withLabelExprP name expr = spaces *>
+  choice [ char '→' *> (PiP name expr <$> exprP)
+         , char '⇒' *> (LamP name expr <$> exprP)
+         , (AppP expr <$> funcP) >>= withLabelExprP name
+         ]
 
 exprsP :: Parsec String st [ExprP]
 exprsP = fmap catMaybes $ optionMaybe exprP `sepBy` char '\n'
