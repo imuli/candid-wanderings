@@ -157,8 +157,8 @@ mulNat = x:Nat ⇒ y:Nat ⇒ Nat ~
 	x Nat Z (addNat y)
 
 Natural = r:* → zero:r → succ:(n:Natural→r) → r
-Zero = r:* ⇒ zero:r ⇒ succ:(n:Natural→r) ⇒ zero
-Succ = n:Natural ⇒ r:* ⇒ zero:r ⇒ succ:(n:Natural→r) ⇒ succ n
+Zero = Natural ~ r:* ⇒ zero:r ⇒ succ:(n:Natural→r) ⇒ zero
+Succ = n:Natural ⇒ Natural ~ r:* ⇒ zero:r ⇒ succ:(n:Natural→r) ⇒ succ n
 
 1 = Succ Zero
 2 = Succ 1
