@@ -79,7 +79,7 @@ closed =
   let rec :: Int -> Expression -> Bool
       rec d expr =
         case expr of
-             Star -> False
+             Star -> True
              Hole _ -> False
              Ref _ n -> 0 <= n && n < d
              Pi _ iT oT -> rec d iT && rec (d+1) oT
