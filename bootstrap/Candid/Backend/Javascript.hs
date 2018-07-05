@@ -12,7 +12,7 @@ data Javascript = JS (String -> String) (String -> String)
 funcs :: Map H.Hash (Bool, String)
 funcs = fromList $ Prelude.map (\(h,v) -> (maybe H.zero id $ H.fromHex h, v)) $
   [ ("dec7f572ba56cc8a4ebe0bb3e5fd2f27cf227c5a6279a71e4151204729d46369", -- Boolean
-    (False, "(b)=>(r)=>(t)=>(f)=>b?t:f"))
+    (False, "(b)=>(t)=>(f)=>b?t:f"))
   , ("c9790141e68367bfb74be063c4f8253d0d4eb1f81fd6b277296eef3b08d9ae07", -- True
     (True, "true"))
   , ("3b48fbd01cc7b4180bba723534847d7df89325cf0fbfde749d7e78e0401d5a98", -- False
@@ -28,13 +28,13 @@ funcs = fromList $ Prelude.map (\(h,v) -> (maybe H.zero id $ H.fromHex h, v)) $
   , ("f65bc2e7bc8c10ea1344bb305dea1bc13d21a28c23bdc5a413c6ff9e6b4cb87d", -- eqBoolean
     (False, "(x)=>(y)=>(i)=>x==y"))
   , ("dbaaa3f7ef1cae3374b5d2ac59ccef6b485f1a5a867339f7405df1645accd15f", -- Maybe
-    (False, "(x)=>(r)=>(nothing)=>(just)=>x===null?nothing:just(x)"))
+    (False, "(x)=>(nothing)=>(just)=>x===null?nothing:just(x)"))
   , ("85601a8bc05b2d545c0566cd210ed7a745fd7f4e40d0f5e8d7876a251a308063", -- Nothing
-    (False, "(t)=>null"))
+    (True, "null"))
   , ("35d7452b2ccf3a8681c11ce382d171703d9f08e68724d6a7f586590bebe8e062", -- Just
-    (False, "(t)=>(x)=>x"))
+    (False, "(x)=>x"))
   , ("71cc540ffe43544c325bbdbf931d0b91630095e8feefb201042f9a5599544f9f", -- Natural
-    (False, "(n)=>(r)=>(zero)=>(succ)=>n===0?zero:succ(n-1)"))
+    (False, "(n)=>(zero)=>(succ)=>n===0?zero:succ(n-1)"))
   , ("25659584101d171372ed8c7f06920b5a7aba489c7341246ae530872df268c185", -- Zero
     (True, "0"))
   , ("dbc2a84a35fb0d482b0eeb865d0d89a2813318724a9caaa6b5c0bf0bc0c43bf9", -- Succ
@@ -48,11 +48,11 @@ funcs = fromList $ Prelude.map (\(h,v) -> (maybe H.zero id $ H.fromHex h, v)) $
   , ("a1ca8ad11d6a94a3f85c2ab507d3e1d46c8de6228a8e8b49d144e77bf2436234", -- ordNatural
     (False, "(m)=>(n)=>(i)=>m<n?$2deb44f8a3a2f75e5bdbeb9ff7bde37c992c9259af6aa61a885a2acd76affd34:m==n?e31afbe771ccae915838134a5e6395c7e912e4b049a1e41738599ab83fc4fccf:de0cd43c8a7a07c49e82eb537d429479ddc09adb5b76c358088ac6c2ae5a4c1e"))
   , ("362ab0b562f153548c722a18768096c74265f8118ae696e38d86af9b2cf876ff", -- List t
-    (False, "(xs)=>(r)=>(nil)=>(cons)=>xs===[]?nil:cons(xs[0])(xs.slice(1))"))
+    (False, "(xs)=>(nil)=>(cons)=>xs===[]?nil:cons(xs[0])(xs.slice(1))"))
   , ("6ec6f4be87fdf1d4231bfecc01a78a7aa942db99bffa61cd26077d8b1167bcd2", -- Nil
-    (False, "(t)=>[]"))
+    (True, "[]"))
   , ("cd3f4ed6dcda4dafa035da30228a0a45618af8b030219de06b1a9601234426eb", -- Cons
-    (False, "(t)=>(x)=>(xs)=>[x,...xs]"))
+    (False, "(x)=>(xs)=>[x,...xs]"))
   ]
 
 -- find the highest order type
@@ -73,7 +73,7 @@ jscompile expr depth rest =
        Just (inline, value) ->
          (if inline then value else '$':show (hashOf expr)) ++ rest
        Nothing ->
-         case expr of
+         case stripTypes expr of
               Star -> "undefined" ++ rest
               Pi _ _ _ -> "undefined" ++ rest
               Ref _ n -> "v" ++ show (depth - 1 - n) ++ rest

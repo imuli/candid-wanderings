@@ -1,6 +1,7 @@
 module Candid.Backend
   ( Backend(..)
   , compile
+  , stripTypes
   , depends
   ) where
 
@@ -13,6 +14,22 @@ class Backend t where
   define :: t -> H.Hash -> Expression -> t
   exec :: t -> Expression -> t
   render :: t -> String
+
+stripTypes :: Expression -> Expression
+stripTypes expr =
+  case expr of
+       Star -> expr
+       Hole _ -> expr
+       Ref _ _ -> expr
+       Name ty name body -> Name ty name $ stripTypes body
+       Pi _ _ _ -> expr
+       Lambda _ name Star body -> replace (Hole name) $ stripTypes body
+       Lambda ty name inType body -> Lambda ty name inType $ stripTypes body
+       Apply ty function argument ->
+         case typeOf argument of
+              Star -> stripTypes function
+              _ -> Apply ty (stripTypes function) (stripTypes argument)
+       Hash _ _ _ -> expr
 
 depends :: Store -> [H.Hash] -> Expression -> [H.Hash]
 depends store = (%)
