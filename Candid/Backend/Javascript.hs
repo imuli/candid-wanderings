@@ -27,12 +27,6 @@ funcs = fromList $ Prelude.map (\(h,v) -> (maybe H.zero id $ H.fromHex h, v)) $
     (False, "(x)=>(y)=>x!=y"))
   , ("f65bc2e7bc8c10ea1344bb305dea1bc13d21a28c23bdc5a413c6ff9e6b4cb87d", -- eqBoolean
     (False, "(x)=>(y)=>(i)=>x==y"))
-  , ("dbaaa3f7ef1cae3374b5d2ac59ccef6b485f1a5a867339f7405df1645accd15f", -- Maybe
-    (False, "(x)=>(nothing)=>(just)=>x===null?nothing:just(x)"))
-  , ("85601a8bc05b2d545c0566cd210ed7a745fd7f4e40d0f5e8d7876a251a308063", -- Nothing
-    (True, "null"))
-  , ("35d7452b2ccf3a8681c11ce382d171703d9f08e68724d6a7f586590bebe8e062", -- Just
-    (False, "(x)=>x"))
   , ("71cc540ffe43544c325bbdbf931d0b91630095e8feefb201042f9a5599544f9f", -- Natural
     (False, "(n)=>(zero)=>(succ)=>n===0?zero:succ(n-1)"))
   , ("25659584101d171372ed8c7f06920b5a7aba489c7341246ae530872df268c185", -- Zero
