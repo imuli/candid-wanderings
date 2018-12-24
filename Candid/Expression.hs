@@ -92,8 +92,8 @@ closed =
 hashOf :: Expression -> H.Hash
 hashOf expr =
   case expr of
-       Star -> H.hash H.zero H.zero (-1,0,0,1)
-       Hole _ -> H.hash H.zero H.zero (-1,0,0,0)
+       Star -> H.hash H.zero H.zero (0xffffffff,0,0,1)
+       Hole _ -> H.hash H.zero H.zero (0xffffffff,0,0,0)
        Ref _ n -> H.hash H.zero H.zero (1,0,0,fromIntegral n)
        Pi _ iT oT -> H.hash (hashOf iT) (hashOf oT) (0,0,0,3)
        Lambda _ _ iT b -> H.hash (hashOf iT) (hashOf b) (0,0,0,2)
