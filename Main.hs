@@ -11,7 +11,7 @@ import Candid.Typecheck
 import Candid.Backend
 import Candid.Backend.Javascript
 
-import Data.Maybe (listToMaybe, catMaybes)
+import Data.Maybe (listToMaybe)
 import Data.List (intercalate)
 
 usage :: IO ()

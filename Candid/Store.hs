@@ -65,6 +65,7 @@ smush store =
   let rec expr =
         case expr of
              Star -> Star
+             Box -> Box
              Hole name -> Hole name
              Ref ty n -> Ref (rec ty) n
              Pi name inType outType -> smushOnce store $ Pi name (rec inType) (rec outType)
@@ -86,6 +87,7 @@ expand store =
   let rec expr =
         case expr of
              Star -> Star
+             Box -> Box
              Hole name -> Hole name
              Ref ty n -> Ref (rec ty) n
              Pi name inType outType -> Pi name (rec inType) (rec outType)

@@ -30,6 +30,7 @@ typeFill hashExpr =
       tf ctx expr =
         case expr of
              Star -> Star
+             Box -> hole
              Hole _ -> expr
              Ref _ n -> case index n ctx of
                              Nothing -> Ref (Hole "open expression") n
