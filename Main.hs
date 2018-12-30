@@ -19,6 +19,7 @@ usage = do
   putStrLn "commands:"
   putStrLn "\tshow (name)+\tshow entries with name"
   putStrLn "\tload (file)\tload new expressions from file"
+  putStrLn "\ttypecheck (exprs)\ttype check expressions"
   putStrLn "\tcompile (exprs)\tcompile expressions"
 
 nullFile :: IOException -> IO String
