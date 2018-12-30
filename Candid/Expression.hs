@@ -240,8 +240,7 @@ equiv hashExpr =
              (Lambda _ _ inTypeX bodyX, Lambda _ _ inTypeY bodyY) ->
                eq inTypeX inTypeY && eq bodyX bodyY
              (Apply _ functionX argumentX, Apply _ functionY argumentY) ->
-               eq functionX functionY && eq argumentX argumentY ||
-                 eq (applicate hashExpr x) (applicate hashExpr y)
+               eq functionX functionY && eq argumentX argumentY
              (Hash _ _ hX, Hash _ _ hY) -> hX == hY
              -- cases that don't match right off
              (Hash _ _ h, _) -> case hashExpr h of
@@ -252,8 +251,6 @@ equiv hashExpr =
                                      Just y' -> eq x y'
              (Name _ _ b, _) -> eq (replace x b) y
              (_, Name _ _ b) -> eq x (replace y b)
-             (Apply _ _ _, _) -> eq (applicate hashExpr x) y
-             (_, Apply _ _ _) -> eq x (applicate hashExpr y)
              (_, _) -> False
 
    in eq
