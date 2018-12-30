@@ -64,9 +64,8 @@ smush :: Store -> Expression -> Expression
 smush store =
   let rec expr =
         case expr of
-             Star -> Star
-             Box -> Box
-             Hole name -> Hole name
+             Star _ -> expr
+             Hole _ -> expr
              Ref ty n -> Ref (rec ty) n
              Pi name inType outType -> smushOnce store $ Pi name (rec inType) (rec outType)
              Lambda ty name inType body -> smushOnce store $ Lambda (rec ty) name (rec inType) (rec body)
@@ -86,9 +85,8 @@ expand :: Store -> Expression -> Expression
 expand store =
   let rec expr =
         case expr of
-             Star -> Star
-             Box -> Box
-             Hole name -> Hole name
+             Star _ -> expr
+             Hole _ -> expr
              Ref ty n -> Ref (rec ty) n
              Pi name inType outType -> Pi name (rec inType) (rec outType)
              Lambda ty name inType body -> Lambda (rec ty) name (rec inType) (rec body)

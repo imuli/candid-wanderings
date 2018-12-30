@@ -20,10 +20,10 @@ module Candid.Expression
 
 import qualified Blake2s1 as H
 import Data.Maybe (listToMaybe)
+import Data.Char (chr, ord)
 
 data Expression
-  = Star
-  | Box
+  = Star Int
   | Hole String
   | Ref Expression Int
   | Pi String Expression Expression
@@ -43,8 +43,7 @@ showName "" _ = ""
 showName name sep = name ++ sep
 
 parenLevel :: Expression-> Int
-parenLevel Star = 10
-parenLevel Box = 10
+parenLevel (Star _) = 10
 parenLevel (Hole _) = 10
 parenLevel (Ref _ _) = 10
 parenLevel (Name _ _ _) = 5
@@ -57,6 +56,9 @@ paren :: Bool -> String -> String
 paren True s = "(" ++ s ++ ")"
 paren False s = s
 
+toSubscriptNumeral :: Char -> Char
+toSubscriptNumeral = chr . (+ 0x2050) . ord
+
 pretty :: Context -> Expression-> String
 pretty ctx =
   let prettyErrors :: Expression -> String
@@ -66,8 +68,7 @@ pretty ctx =
                                _ -> ""
       pretty' level expr = paren (level >= parenLevel expr) $ prettyErrors expr ++
         case expr of
-             Star -> "★"
-             Box -> "□"
+             Star n -> '★':if n == 0 then "" else map toSubscriptNumeral $ show n
              Hole s -> '?':s
              Ref _ n -> maybe ('!':show n) nameOf $ listToMaybe $ drop n ctx
              Pi name inType outType -> showName name ":" ++ pretty' 5 inType ++ " → " ++ pretty (expr:ctx) outType
@@ -82,8 +83,7 @@ closed =
   let rec :: Int -> Expression -> Bool
       rec d expr =
         case expr of
-             Star -> True
-             Box -> True
+             Star _ -> True
              Hole _ -> False
              Ref _ n -> 0 <= n && n < d
              Pi _ iT oT -> rec d iT && rec (d+1) oT
@@ -96,8 +96,7 @@ closed =
 hashOf :: Expression -> H.Hash
 hashOf expr =
   case expr of
-       Star -> H.hash H.zero H.zero (0xffffffff,0,0,1)
-       Box -> H.hash H.zero H.zero (0xffffffff,0,0,2)
+       Star n -> H.hash H.zero H.zero (0xffffffff,0,0,fromIntegral $ n+1)
        Hole _ -> H.hash H.zero H.zero (0xffffffff,0,0,0)
        Ref _ n -> H.hash H.zero H.zero (1,0,0,fromIntegral n)
        Pi _ iT oT -> H.hash (hashOf iT) (hashOf oT) (0,0,0,3)
@@ -110,8 +109,7 @@ holesIn :: Expression -> [String]
 holesIn =
   let holes % expr = 
         case expr of
-             Star -> holes
-             Box -> holes
+             Star _ -> holes
              Hole name -> name : holes
              Ref ty _ -> holes % ty
              Pi _ iT oT -> holes % iT % oT
@@ -124,8 +122,7 @@ holesIn =
 nameOf :: Expression -> String
 nameOf expr =
   case expr of
-       Star -> ""
-       Box -> ""
+       Star _ -> ""
        Hole _ -> ""
        Ref _ _ -> ""
        Pi name _ _ -> name
@@ -137,8 +134,7 @@ nameOf expr =
 typeOf :: Expression -> Expression
 typeOf expr =
   case expr of
-       Star -> Box
-       Box -> hole
+       Star n -> Star (n+1)
        Hole _ -> hole
        Ref ty _ -> ty
        Pi _ _ outType -> typeOf $ outType
@@ -156,9 +152,8 @@ typeOf expr =
 withType :: Expression -> Expression -> Expression
 withType expr ty =
   case expr of
-       Star -> Star
-       Box -> Box
-       Hole name -> Hole name
+       Star _ -> expr
+       Hole _ -> expr
        Ref _ n -> Ref ty n
        Pi name inType outType -> Pi name inType outType
        Lambda _ name inType body -> Lambda ty name inType body
@@ -170,8 +165,7 @@ shift :: (Int -> Int) -> Expression -> Expression
 shift adj =
   let rec depth expr =
         case expr of
-             Star -> Star
-             Box -> Box
+             Star _ -> expr
              Hole name -> Hole name
              Ref ty n -> Ref (rec depth ty) $ if depth <= n then adj n else n
              Pi name inType outType -> Pi name (rec depth inType) (rec (1+depth) outType)
@@ -185,8 +179,7 @@ replace :: Expression -> Expression -> Expression
 replace ref =
   let rec depth expr =
         case expr of
-             Star -> Star
-             Box -> Box
+             Star _ -> expr
              Hole name -> Hole name
              Ref _ n -> if depth == n then shift (1 + depth +) ref else expr -- FIXME check type?
              Pi name inType outType -> Pi name (rec depth inType) (rec (1+depth) outType)
@@ -230,8 +223,7 @@ equiv :: (H.Hash -> Maybe Expression) -> Expression -> Expression -> Bool
 equiv hashExpr =
   let eq x y =
         case (x,y) of
-             (Star, Star) -> True
-             (Box, Box) -> True
+             (Star nX, Star nY) -> nX == nY
              (Hole _, Hole _) -> True
              (Ref _ nX, Ref _ nY) -> nX == nY
              (Name _ _ bX, Name _ _ bY) -> eq bX bY

@@ -29,8 +29,7 @@ typeFill hashExpr =
              _ -> if equiv hashExpr a b then a else Hole $ "Failed type assertion: " ++ pretty ctx a ++ " was found as " ++ pretty ctx b ++ "."
       tf ctx expr =
         case expr of
-             Star -> Star
-             Box -> hole
+             Star _ -> expr
              Hole _ -> expr
              Ref _ n -> case index n ctx of
                              Nothing -> Ref (Hole "open expression") n

@@ -68,7 +68,7 @@ jscompile expr depth rest =
          (if inline then value else '$':show (hashOf expr)) ++ rest
        Nothing ->
          case stripTypes expr of
-              Star -> "undefined" ++ rest
+              Star _ -> "undefined" ++ rest
               Hole _ -> "undefined" ++ rest
               Pi _ _ _ -> "undefined" ++ rest
               Ref _ n -> "v" ++ show (depth - 1 - n) ++ rest

@@ -15,7 +15,7 @@ import Data.Maybe (listToMaybe, catMaybes)
 import Data.List (elemIndex)
 
 data ExprP
-  = StarP
+  = StarP Int
   | RefP String
   | TypeP ExprP ExprP
   | NameP String ExprP
@@ -38,7 +38,7 @@ toExpression :: Store -> ExprP -> Expression
 toExpression store =
   let rec ctx expr =
         case expr of
-             StarP -> Star
+             StarP n -> Star n
              RefP name -> maybe (Hole name) id $ find store ctx name
              NameP name body -> Name hole name (rec (name:ctx) body)
              PiP name inType outType -> Pi name (rec ctx inType) (rec (name:ctx) outType)
@@ -85,7 +85,7 @@ paren :: Parsec String st u -> Parsec String st u
 paren inner = try $ char '(' *> inner <* spaces <* char ')'
 
 starP :: Parsec String st ExprP
-starP = StarP <$ char '*'
+starP = StarP 0 <$ (char '*' <|> char '★') -- FIXME: parse subscripts
 
 refP :: Parsec String st ExprP
 refP = RefP <$> nameString

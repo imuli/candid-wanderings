@@ -18,23 +18,23 @@ class Backend t where
 stripTypes :: Expression -> Expression
 stripTypes expr =
   case expr of
-       Star -> expr
+       Star _ -> expr
        Hole _ -> expr
        Ref _ _ -> expr
        Name ty name body -> Name ty name $ stripTypes body
        Pi _ _ _ -> expr
-       Lambda _ name Star body -> replace (Hole name) $ stripTypes body
+       Lambda _ name (Star _) body -> replace (Hole name) $ stripTypes body
        Lambda ty name inType body -> Lambda ty name inType $ stripTypes body
        Apply ty function argument ->
          case typeOf argument of
-              Star -> stripTypes function
+              (Star _) -> stripTypes function
               _ -> Apply ty (stripTypes function) (stripTypes argument)
        Hash _ _ _ -> expr
 
 depends :: Store -> [H.Hash] -> Expression -> [H.Hash]
 depends store = (%)
   where
-    hs % Star = hs
+    hs % (Star _) = hs
     hs % (Hole _) = hs
     hs % (Ref ty _) = hs % ty
     hs % (Pi _ inType outType) = hs % inType % outType
