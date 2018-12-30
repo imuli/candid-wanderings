@@ -29,9 +29,9 @@ funcs = fromList $ Prelude.map (\(h,v) -> (maybe H.zero id $ H.fromHex h, v)) $
     (False, "(x)=>(y)=>(i)=>x==y"))
   , ("71cc540ffe43544c325bbdbf931d0b91630095e8feefb201042f9a5599544f9f", -- Natural
     (False, "(n)=>(zero)=>(succ)=>n===0?zero:succ(n-1)"))
-  , ("25659584101d171372ed8c7f06920b5a7aba489c7341246ae530872df268c185", -- Zero
+  , ("a23d794e6afcd0e8f066a628ea336e83170fb47f68aaedac8923749bc7aff38e", -- Zero
     (True, "0"))
-  , ("dbc2a84a35fb0d482b0eeb865d0d89a2813318724a9caaa6b5c0bf0bc0c43bf9", -- Succ
+  , ("4d6fc413d381589048d5ad6535027aa7899fae0a691a1cfaa70144957f8af7dc", -- Succ
     (False, "(n)=>1+n"))
   , ("d3c1ebf6ea09dde459bf4d24e1f4cd6c65e9e8bd3ced15e0b22b270535d83f3c", -- addNatural
     (False, "(m)=>(n)=>m+n"))
@@ -69,6 +69,7 @@ jscompile expr depth rest =
        Nothing ->
          case stripTypes expr of
               Star -> "undefined" ++ rest
+              Hole _ -> "undefined" ++ rest
               Pi _ _ _ -> "undefined" ++ rest
               Ref _ n -> "v" ++ show (depth - 1 - n) ++ rest
               Name _ name body -> "/* " ++ name ++ " */" ++
