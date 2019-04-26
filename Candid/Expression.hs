@@ -2,6 +2,7 @@
 
 module Candid.Expression
   ( Expression(..)
+  , Binder(..)
   , hole
   , Context
   , pretty
@@ -22,13 +23,17 @@ import qualified Blake2s1 as H
 import Data.Maybe (listToMaybe)
 import Data.Char (chr, ord)
 
+data Binder
+  = Pi
+  | Lambda
+  | Fix
+  deriving (Eq, Show, Read)
+
 data Expression
   = Star Int
   | Hole String
   | Ref Expression Int
-  | Pi String Expression Expression
-  | Lambda Expression String Expression Expression
-  | Name Expression String Expression
+  | Bind Binder Expression String Expression Expression
   | Apply Expression Expression Expression
   | Hash Expression String H.Hash
   deriving (Show, Read)
@@ -46,9 +51,7 @@ parenLevel :: Expression-> Int
 parenLevel (Star _) = 10
 parenLevel (Hole _) = 10
 parenLevel (Ref _ _) = 10
-parenLevel (Name _ _ _) = 5
-parenLevel (Pi _ _ _) = 5
-parenLevel (Lambda _ _ _ _) = 5
+parenLevel (Bind _ _ _ _ _) = 5
 parenLevel (Apply _ _ _) = 9
 parenLevel (Hash _ _ _) = 10
 
@@ -71,9 +74,9 @@ pretty ctx =
              Star n -> '★':if n == 0 then "" else map toSubscriptNumeral $ show n
              Hole s -> '?':s
              Ref _ n -> maybe ('!':show n) nameOf $ listToMaybe $ drop n ctx
-             Pi name inType outType -> showName name ":" ++ pretty' 5 inType ++ " → " ++ pretty (expr:ctx) outType
-             Lambda _ name inType body -> showName name ":" ++ pretty' 5 inType ++ " ⇒ " ++ pretty (expr:ctx) body
-             Name _ name body -> showName name " = " ++ pretty (expr:ctx) body
+             Bind Pi _ name inType outType -> showName name ":" ++ pretty' 5 inType ++ " → " ++ pretty (expr:ctx) outType
+             Bind Lambda _ name inType body -> showName name ":" ++ pretty' 5 inType ++ " ⇒ " ++ pretty (expr:ctx) body
+             Bind Fix _ name _ body -> showName name " = " ++ pretty (expr:ctx) body
              Apply _ function argument -> pretty' 5 function ++ " " ++ pretty' 9 argument
              Hash _ name _ -> name
    in pretty' 0
@@ -86,9 +89,9 @@ closed =
              Star _ -> True
              Hole _ -> False
              Ref _ n -> 0 <= n && n < d
-             Pi _ iT oT -> rec d iT && rec (d+1) oT
-             Lambda _ _ iT b -> rec d iT && rec (d+1) b
-             Name _ _ b -> rec (d+1) b
+             Bind Pi _ _ iT oT -> rec d iT && rec (d+1) oT
+             Bind Lambda _ _ iT b -> rec d iT && rec (d+1) b
+             Bind Fix _ _ _ b -> rec (d+1) b
              Apply _ f a -> rec d f && rec d a
              Hash _ _ _ -> True
    in rec 0
@@ -99,9 +102,9 @@ hashOf expr =
        Star n -> H.hash H.zero H.zero (0xffffffff,0,0,fromIntegral $ n+1)
        Hole _ -> H.hash H.zero H.zero (0xffffffff,0,0,0)
        Ref _ n -> H.hash H.zero H.zero (1,0,0,fromIntegral n)
-       Pi _ iT oT -> H.hash (hashOf iT) (hashOf oT) (0,0,0,3)
-       Lambda _ _ iT b -> H.hash (hashOf iT) (hashOf b) (0,0,0,2)
-       Name _ _ b -> if closed b then (hashOf b) else H.hash H.zero (hashOf b) (0,0,0,4)
+       Bind Pi _ _ iT oT -> H.hash (hashOf iT) (hashOf oT) (0,0,0,3)
+       Bind Lambda _ _ iT b -> H.hash (hashOf iT) (hashOf b) (0,0,0,2)
+       Bind Fix _ _ _ b -> if closed b then (hashOf b) else H.hash H.zero (hashOf b) (0,0,0,4)
        Apply _ f a -> H.hash (hashOf f) (hashOf a) (0,0,0,1)
        Hash _ _ h -> h
 
@@ -112,9 +115,9 @@ holesIn =
              Star _ -> holes
              Hole name -> name : holes
              Ref ty _ -> holes % ty
-             Pi _ iT oT -> holes % iT % oT
-             Lambda ty _ iT b -> holes % ty % iT % b
-             Name ty _ b -> holes % ty % b
+             Bind Pi _ _ iT oT -> holes % iT % oT
+             Bind Lambda ty _ iT b -> holes % ty % iT % b
+             Bind Fix ty _ _ b -> holes % ty % b
              Apply ty f a -> holes % ty % f % a
              Hash ty _ _ -> holes % ty
    in ([] %)
@@ -125,9 +128,9 @@ nameOf expr =
        Star _ -> ""
        Hole _ -> ""
        Ref _ _ -> ""
-       Pi name _ _ -> name
-       Lambda _ name _ _ -> name
-       Name _ name _ -> name
+       Bind Pi _ name _ _ -> name
+       Bind Lambda _ name _ _ -> name
+       Bind Fix _ name _ _ -> name
        Apply _ _ _ -> ""
        Hash _ name _ -> name
 
@@ -137,15 +140,10 @@ typeOf expr =
        Star n -> Star (n+1)
        Hole _ -> hole
        Ref ty _ -> ty
-       Pi _ _ outType -> typeOf $ outType
-       Lambda ty name inType body ->
-         case ty of
-              Hole _ -> Pi name inType $ typeOf body
-              _ -> ty
-       Name ty _ body ->
-         case ty of
-              Hole _ -> replace expr $ typeOf body
-              _ -> ty
+       Bind Pi (Hole _) _ _ outType -> typeOf $ outType
+       Bind Lambda (Hole _) name inType body -> Bind Pi (typeOf $ typeOf body) name inType $ typeOf body
+       Bind Fix (Hole _) _ _ body -> replace expr $ typeOf body
+       Bind _ ty _ _ _ -> ty
        Apply ty _ _ -> ty
        Hash ty _ _ -> ty
 
@@ -155,9 +153,9 @@ withType expr ty =
        Star _ -> expr
        Hole _ -> expr
        Ref _ n -> Ref ty n
-       Pi name inType outType -> Pi name inType outType
-       Lambda _ name inType body -> Lambda ty name inType body
-       Name _ name body -> Name ty name body
+       Bind Pi _ name inType outType -> Bind Pi ty name inType outType
+       Bind Lambda _ name inType body -> Bind Lambda ty name inType body
+       Bind Fix _ name ty' body -> Bind Fix ty name ty' body
        Apply _ function argument -> Apply ty function argument
        Hash _ name hash -> Hash ty name hash
 
@@ -168,9 +166,9 @@ shift adj =
              Star _ -> expr
              Hole name -> Hole name
              Ref ty n -> Ref (rec depth ty) $ if depth <= n then adj n else n
-             Pi name inType outType -> Pi name (rec depth inType) (rec (1+depth) outType)
-             Lambda ty name inType body -> Lambda (rec depth ty) name (rec depth inType) (rec (1+depth) body)
-             Name ty name body -> Name (rec depth ty) name (rec (1+depth) body)
+             Bind Pi ty name inType outType -> Bind Pi ty name (rec depth inType) (rec (1+depth) outType)
+             Bind Lambda ty name inType body -> Bind Lambda (rec depth ty) name (rec depth inType) (rec (1+depth) body)
+             Bind Fix ty name ty' body -> Bind Fix (rec depth ty) name (rec depth ty') (rec (1+depth) body)
              Apply ty function argument -> Apply (rec depth ty) (rec depth function) (rec depth argument)
              Hash ty name hash -> Hash (rec depth ty) name hash
    in rec 0
@@ -182,9 +180,9 @@ replace ref =
              Star _ -> expr
              Hole name -> Hole name
              Ref _ n -> if depth == n then shift (1 + depth +) ref else expr -- FIXME check type?
-             Pi name inType outType -> Pi name (rec depth inType) (rec (1+depth) outType)
-             Lambda ty name inType body -> Lambda (rec depth ty) name (rec depth inType) (rec (1+depth) body)
-             Name ty name body -> Name (rec depth ty) name (rec (1+depth) body)
+             Bind Pi ty name inType outType -> Bind Pi (rec depth ty) name (rec depth inType) (rec (1+depth) outType)
+             Bind Lambda ty name inType body -> Bind Lambda (rec depth ty) name (rec depth inType) (rec (1+depth) body)
+             Bind Fix ty name ty' body -> Bind Fix (rec depth ty) name (rec depth ty') (rec (1+depth) body)
              Apply ty function argument -> Apply (rec depth ty) (rec depth function) (rec depth argument)
              Hash ty name hash -> Hash (rec depth ty) name hash
    in shift (-1 +) . rec 0
@@ -192,15 +190,15 @@ replace ref =
 reduce :: Expression -> Expression
 reduce expr =
       case expr of
-           Pi name inType outType -> Pi name (reduce inType) (reduce outType)
-           Lambda ty name inType body -> Lambda ty name (reduce inType) (reduce body)
-           Name ty name body -> Name ty name (reduce body)
+           Bind Pi ty name inType outType -> Bind Pi ty name (reduce inType) (reduce outType)
+           Bind Lambda ty name inType body -> Bind Lambda ty name (reduce inType) (reduce body)
+           Bind Fix ty ty' name body -> Bind Fix ty ty' name (reduce body)
            Apply ty function argument -> 
              let rf = reduce function
                  ra = reduce argument
               in case rf of
-                      Name _ _ body -> reduce $ Apply ty (replace rf body) ra
-                      Lambda _ _ _ body -> reduce $ replace argument body
+                      Bind Fix _ _ _ body -> reduce $ Apply ty (replace rf body) ra
+                      Bind Lambda _ _ _ body -> reduce $ replace argument body
                       _ -> Apply ty ra rf
            _ -> expr
 
@@ -210,11 +208,11 @@ applicate hashExpr expr =
        Apply ty function argument ->
          let function' = applicate hashExpr function
           in case function' of
-                  Lambda _ _ _ body -> applicate hashExpr $ replace argument body
+                  Bind Lambda _ _ _ body -> applicate hashExpr $ replace argument body
                   _ -> Apply ty function' argument
        Hash _ _ h ->
          maybe expr (applicate hashExpr) $ hashExpr h
-       Name _ _ body ->
+       Bind Fix _ _ _ body ->
          applicate hashExpr $ replace expr body
        _ -> expr
 
@@ -226,10 +224,10 @@ equiv hashExpr =
              (Star nX, Star nY) -> nX == nY
              (Hole _, Hole _) -> True
              (Ref _ nX, Ref _ nY) -> nX == nY
-             (Name _ _ bX, Name _ _ bY) -> eq bX bY
-             (Pi _ inTypeX outTypeX, Pi _ inTypeY outTypeY) ->
+             (Bind Fix _ _ _ bX, Bind Fix _ _ _ bY) -> eq bX bY
+             (Bind Pi _ _ inTypeX outTypeX, Bind Pi _ _ inTypeY outTypeY) ->
                eq inTypeX inTypeY && eq outTypeX outTypeY
-             (Lambda _ _ inTypeX bodyX, Lambda _ _ inTypeY bodyY) ->
+             (Bind Lambda _ _ inTypeX bodyX, Bind Lambda _ _ inTypeY bodyY) ->
                eq inTypeX inTypeY && eq bodyX bodyY
              (Apply _ functionX argumentX, Apply _ functionY argumentY) ->
                eq functionX functionY && eq argumentX argumentY
@@ -241,8 +239,8 @@ equiv hashExpr =
              (_, Hash _ _ h) -> case hashExpr h of
                                      Nothing -> h == hashOf x
                                      Just y' -> eq x y'
-             (Name _ _ b, _) -> eq (replace x b) y
-             (_, Name _ _ b) -> eq x (replace y b)
+             (Bind Fix _ _ _ b, _) -> eq (replace x b) y
+             (_, Bind Fix _ _ _ b) -> eq x (replace y b)
              (_, _) -> False
 
    in eq

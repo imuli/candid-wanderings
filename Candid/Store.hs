@@ -25,7 +25,7 @@ data Entry = Entry { entryName :: String
                    } deriving (Show, Read)
 
 prettyEntry :: Entry -> String
-prettyEntry entry = "Name: " ++ entryName entry ++ "\nType: " ++ pretty [] (typeOf $ entryExpr entry) ++ "\nExpression: " ++ pretty [] (entryExpr entry) ++ "\nHash: " ++ H.toHex (entryHash entry)
+prettyEntry entry = "Bind Fix: " ++ entryName entry ++ "\nType: " ++ pretty [] (typeOf $ entryExpr entry) ++ "\nExpression: " ++ pretty [] (entryExpr entry) ++ "\nHash: " ++ H.toHex (entryHash entry)
 
 type Store = HM.HashMap H.Hash Entry
 
@@ -67,9 +67,7 @@ smush store =
              Star _ -> expr
              Hole _ -> expr
              Ref ty n -> Ref (rec ty) n
-             Pi name inType outType -> smushOnce store $ Pi name (rec inType) (rec outType)
-             Lambda ty name inType body -> smushOnce store $ Lambda (rec ty) name (rec inType) (rec body)
-             Name ty name body -> smushOnce store $ Name (rec ty) name (rec body)
+             Bind b ty name inType outType -> smushOnce store $ Bind b (rec ty) name (rec inType) (rec outType)
              Apply ty function argument -> smushOnce store $ Apply (rec ty) (rec function) (rec argument)
              Hash ty name hash -> Hash (rec ty) name hash
    in rec
@@ -88,9 +86,7 @@ expand store =
              Star _ -> expr
              Hole _ -> expr
              Ref ty n -> Ref (rec ty) n
-             Pi name inType outType -> Pi name (rec inType) (rec outType)
-             Lambda ty name inType body -> Lambda (rec ty) name (rec inType) (rec body)
-             Name ty name body -> Name (rec ty) name (rec body)
+             Bind b ty name inType body -> Bind b (rec ty) name (rec inType) (rec body)
              Apply ty function argument -> Apply (rec ty) (rec function) (rec argument)
              Hash ty name hash -> maybe (Hash (rec ty) name hash) (rec . entryExpr) $ byHash store hash
    in rec

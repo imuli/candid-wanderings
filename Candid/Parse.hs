@@ -18,7 +18,7 @@ data ExprP
   = StarP Int
   | RefP String
   | TypeP ExprP ExprP
-  | NameP String ExprP
+  | FixP String ExprP
   | PiP String ExprP ExprP
   | LamP String ExprP ExprP
   | AppP ExprP ExprP
@@ -40,9 +40,9 @@ toExpression store =
         case expr of
              StarP n -> Star n
              RefP name -> maybe (Hole name) id $ find store ctx name
-             NameP name body -> Name hole name (rec (name:ctx) body)
-             PiP name inType outType -> Pi name (rec ctx inType) (rec (name:ctx) outType)
-             LamP name inType body -> Lambda hole name (rec ctx inType) (rec (name:ctx) body)
+             FixP name body -> Bind Fix hole name hole (rec (name:ctx) body)
+             PiP name inType outType -> Bind Pi hole name (rec ctx inType) (rec (name:ctx) outType)
+             LamP name inType body -> Bind Lambda hole name (rec ctx inType) (rec (name:ctx) body)
              AppP function argument -> Apply hole (rec ctx function) (rec ctx argument)
              TypeP bodyType body -> rec ctx body `withType` rec ctx bodyType
    in rec []
@@ -95,17 +95,17 @@ exprP :: Parsec String st ExprP
 exprP = spaces *>
   choice [ starP >>= withExprP
          , paren exprP >>= withExprP
-         , nameString >>= withNameP
+         , nameString >>= withFixP
          ]
 
 -- With just a name, we need:
 -- : starts a lambda or pi
 -- = makes a name
 -- anything else means this name is a reference
-withNameP :: String -> Parsec String st ExprP
-withNameP name = spaces *>
+withFixP :: String -> Parsec String st ExprP
+withFixP name = spaces *>
   choice [ char ':' *> withLabelP name
-         , char '=' *> (NameP name <$> exprP)
+         , char '=' *> (FixP name <$> exprP)
          , withExprP $ RefP name
          ]
 

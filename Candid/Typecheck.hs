@@ -13,12 +13,12 @@ index i = listToMaybe . drop i
 refTypeOf :: Expression -> Expression
 refTypeOf expr =
   case expr of
-       Name ty _ body ->
+       Bind Fix _ _ ty body ->
          case ty of
               Hole _ -> replace expr $ typeOf body
               _ -> ty
-       Pi _ inType _ -> inType
-       Lambda _ _ inType _ -> inType
+       Bind Pi _ _ inType _ -> inType
+       Bind Lambda _ _ inType _ -> inType
        _ -> Hole "weird reference"
 
 typeFill :: (H.Hash -> Maybe Expression) -> Context -> Expression -> Expression
@@ -34,25 +34,26 @@ typeFill hashExpr =
              Ref _ n -> case index n ctx of
                              Nothing -> Ref (Hole "open expression") n
                              Just ref -> Ref (tf ctx $ shift (n+1+) $ refTypeOf ref) n
-             Name ty name body ->
+             Bind Fix _ name ty body ->
                let ty' = tf ctx ty
-                   body' = tf (Name ty' name body:ctx) body
-                in Name (check ctx ty' $ typeOf $ replace (Name ty' name body') body') name body'
-             Pi name inType outType ->
+                   body' = tf (Bind Fix ty' name ty' body:ctx) body
+                   ty'' = (check ctx ty' $ typeOf $ replace (Bind Fix ty' name ty' body') body')
+                in Bind Fix ty'' name ty'' body'
+             Bind Pi _ name inType outType ->
                let inType' = tf ctx inType
-                   outType' = tf (Pi name inType' outType : ctx) outType
-                in Pi name inType' outType'
-             Lambda ty name inType body ->
+                   outType' = tf (Bind Pi (typeOf outType) name inType' outType : ctx) outType
+                in Bind Pi (typeOf outType') name inType' outType'
+             Bind Lambda ty name inType body ->
                let ty' = tf ctx ty
                    inType' = tf ctx inType
-                   body' = tf (Lambda ty' name inType' body : ctx) body
-                in Lambda (check ctx ty' $ Pi name inType' $ typeOf body') name inType' body'
+                   body' = tf (Bind Lambda ty' name inType' body : ctx) body
+                in Bind Lambda (check ctx ty' $ Bind Pi (typeOf $ typeOf body') name inType' $ typeOf body') name inType' body'
              Apply ty function argument ->
                let ty' = tf ctx ty
                    func' = tf ctx function
                    arg' = tf ctx argument
                 in case applicate hashExpr $ typeOf func' of
-                        Pi _ inType outType ->
+                        Bind Pi _ _ inType outType ->
                           if equiv hashExpr inType $ typeOf arg'
                              then Apply (check ctx ty' $ replace arg' outType) func' arg'
                              else Apply (Hole $ "Type mismatch (" ++
